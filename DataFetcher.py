@@ -211,6 +211,8 @@ class DataFetcher(object):
         ----------
         Raises:
         ValueError: If either 'dataset' or 'dropOrthopedics' are not within the valid range of data.
+
+        ValueError: If a scaler is neither an instance of GRFScaler nor None.
         """
         
         if dataset not in ["TEST", "TRAIN", "TRAIN_BALANCED"]:
@@ -227,13 +229,14 @@ class DataFetcher(object):
         metadata = _select_dataset(metadata, dataset)
 
         left, right = self.__fetch_data(metadata, raw)
-        for leg in [left, right]:
-            leg = _sample(leg, stepsize, raw)
-            if averageTrials:
-                leg = _average_trials(leg)
+
+        left, right = [_sample(leg, stepsize, raw) for leg in (left, right)]
+        if averageTrials:
+            left, right = [_average_trials(leg) for leg in (left, right)]
 
         if scaler != None:
-            assert isinstance(scaler, GRFScaler), "Scaler needs to be a GRFScaler or None."
+            if not isinstance(scaler, GRFScaler):
+                raise ValueError("Scaler needs to be a GRFScaler or None.")
             if not scaler.is_fitted():
                 _fit_scaler(scaler, (left, right))
 
@@ -248,6 +251,7 @@ class DataFetcher(object):
 
         affected, non_affected = _arrange_data(left, right, metadata, randSeed=42)
         data = self.__split_and_format(affected, non_affected)
+        print(data["affected"].shape)
 
         return data     
         

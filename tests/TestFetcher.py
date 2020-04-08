@@ -28,7 +28,12 @@ class TestFetcher(unittest.TestCase):
             fetcher = DataFetcher("/test")
             fetcher = DataFetcher("")
 
-    
+    def test_fetch_set(self):
+        fetcher = DataFetcher(filepath)
+
+        self.__assert_data_selection(fetcher)
+
+    """
     def test_data_selection_and_trim(self):
         metadata = pd.read_csv(filepath+"/GRF_metadata.csv", header=0)
         # only intial measurements
@@ -220,8 +225,42 @@ class TestFetcher(unittest.TestCase):
         for i in range(5):
             assert np.equal(data["affected"][:, :, i], np.asarray(affected[comp_list[i]].iloc[:, 3:104]), dtype=np.float32).all(), "Data for {} component does not match".format(comp_list[i])
         #TODO test for averaged data/concatenated data
+    """
+    def __assert_data_selection(self, fetcher):
 
+        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="None", dataset="TRAIN")
+        assert train["affected"].shape[0] == 1463, "Wrong number of inital measurements in TRAIN. {} vs 1463.".format(train["affected"].shape[0])
+        assert train["affected"].shape == (1463, 101, 5), "Wrong shape of output data in TRAIN. {} vs (1463, 101, 5).".format(train["affected"].shape)
+        assert test["affected"].shape[0] == 704, "Wrong number of inital measurements in TEST. {} vs 704.".format(test["affected"].shape[0])
+        assert test["affected"].shape == (704, 101, 5), "Wrong shape of output data in TEST. {} vs (704, 101, 5).".format(test["affected"].shape)
 
+        train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="Verified", dataset="TRAIN")
+        assert train["affected"].shape[0] == 4820, "Wrong number of inital measurements in TRAIN. {} vs 4820.".format(train["affected"].shape[0])
+        assert train["affected"].shape == (4820, 101, 5), "Wrong shape of output data in TRAIN. {} vs (4820, 101, 5).".format(train["affected"].shape)
+        assert test["affected"].shape[0] == 2270, "Wrong number of inital measurements in TEST. {} vs 2270.".format(test["affected"].shape[0])
+        assert test["affected"].shape == (2270, 101, 5), "Wrong shape of output data in TEST. {} vs (2270, 101, 5).".format(test["affected"].shape)
+
+        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="All", dataset="TRAIN")
+        assert train["affected"].shape[0] == 1234, "Wrong number of inital measurements in TRAIN. {} vs 1234.".format(train["affected"].shape[0])
+        assert train["affected"].shape == (1234, 101, 5), "Wrong shape of output data in TRAIN. {} vs (1234, 101, 5).".format(train["affected"].shape)
+        assert test["affected"].shape[0] == 688, "Wrong number of inital measurements in TEST. {} vs 688.".format(test["affected"].shape[0])
+        assert test["affected"].shape == (688, 101, 5), "Wrong shape of output data in TEST. {} vs (688, 101, 5).".format(test["affected"].shape)
+
+        train = fetcher.fetch_set(onlyInitial=True, dropOrthopedics="All", dataset="TRAIN_BALANCED")
+        assert train["affected"].shape[0] == 730, "Wrong number of inital measurements in TRAIN_BALANCED. {} vs 730.".format(train["affected"].shape[0])
+        assert train["affected"].shape == (730, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (730, 101, 5).".format(train["affected"].shape)
+        train = fetcher.fetch_set(onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED")
+        assert train["affected"].shape[0] == 730, "Wrong number of inital measurements in TRAIN_BALANCED. {} vs 730.".format(train["affected"].shape[0])
+        assert train["affected"].shape == (730, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (730, 101, 5).".format(train["affected"].shape)
+
+        with self.assertRaises(ValueError):
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics="", dataset="TRAIN_BALANCED")
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics=None, dataset="TRAIN_BALANCED")
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics="TEST", dataset="TRAIN_BALANCED")
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset="TEST_BALANCED")
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset="")
+            fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset=None)
+            fetcher.fetch_data(onlyInitial=True, dropOrthopedics="All", dataset="TEST")
 
 
 def _DFdicts_equal(dict1, dict2):
@@ -232,6 +271,8 @@ def _DFdicts_equal(dict1, dict2):
         if not dict1[component].equals(dict2[component]):
             return False
     return True
+
+
 
 
 
