@@ -10,7 +10,7 @@ class GRFScaler(object):
     Currently only StandardScaler and MinMaxScaler are supported.
 
     Parameters:
-    scalertype : string, default "MinMax"
+    scalertype : string, default="MinMax"
         Specifies the scaler type to use, has to be one of either "Minmax" or "Standard".
         Type specification is not case-sensitiv.
         "Standard": scales the data to mean=0 and standard deviation=1

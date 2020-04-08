@@ -72,14 +72,156 @@ class DataFetcher(object):
         return self.comp_order
 
 
-    def fetch_set(self, onlyInitial=False, dropOrthopedics=True, dataset="TRAIN_BALANCED", raw=False, stepsize=1, averageTrials=True, scaler=None, concat=False):
-        assert dataset in ["TEST", "TRAIN", "TRAIN_BALANCED"], "Dataset {} does not exist. Please use one of 'TEST'/'TRAIN'/'TRAIN_BALANCED'."
+    def set_comp_order(self, comp_order):
+        """Sets the component order used for the force components in the final output.
+        I.e. the first element is orderd first, then the second and so on (either concatenated or along the first axis).
+
+        Parameters:
+        comp_order : list of shape (5)
+            The component order that should be used. Must include 'f_v', 'f_ap', 'f_ml', 'cop_ap' and 'cop_ml'.
+
+        ----------
+        Raises:
+        ValueError : If one of the force component is not included in the new list or if the same component appears more than once.
+        """
+
+        if len(comp_order) != len(self.comp_order):
+            raise ValueError("Length of the new component order does not match the old one. {} vs {}". format(len(comp_order), len(self.comp_order)))
+        
+        for component in self.comp_order:
+            if component not in comp_order:
+                raise ValueError("{} component is not provided in the new component order".format(component))
+
+        if len(list(dict.fromkeys(comp_order))) != len(self.comp_order):
+            raise ValueError("Duplicate values were provided in component order")
+
+        # if none of the above is True, accept new component order
+        self.comp_order = comp_order
+
+
+    def fetch_data(self, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", raw=False, stepsize=1, averageTrials=True, scaler=None, concat=False):
+        """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
+        Both the specified dataset and the test set are processed in the same manner.
+
+        Parameters:
+        OnlyInital : bool, default=False
+            If True, only inital measurements (excluding control measurements and readmissions) are returned.
+
+        dropOrthopedics : string, default="None"
+            Patients using orthopedic aids are ommitted according to this specification. 
+            Possible values are:
+            "None":     No patients are omitted.
+            "Verified": All patients using orthpedic aids are omitted.
+            "All":      Only patients using no orthopedic aids are returned (i.e. NaNs are omitted).
+
+        dataset : string, default="TRAIN_BALANCED"
+            Only measurements included in the specified dataset AND the test set are returned.
+            Possible values are "TRAIN_BALANCED" and "TRAIN".
+
+        raw : bool, default=False
+            If True the files containing the raw data are used instead of the normalized ones.
+
+        stepsize : int, double, default=1
+            Has to be int if working with processed data. Specifies the interval at which to sample the data.
+            If stepsize = 1 all datapoints are used, if stepsize = 2, every second datapoint is used and so on.
+            For raw data the number of samples is calculated at a basis of 100.
+            The number or resamples = 100/stepsize rounded down.
+
+        averageTrials : bool, default=True
+            If True all trial recorded within the same session are reduced to 1 averaged measurement.
+            Otherwise no modifications are made.
+
+        scaler : GRFScaler, default=None
+            If a scaler is provided, it is used to normalize the data.
+
+        concat : bool, default=False
+            If True, the force components are concatenated according to the order specified in 'comp_order'.
+            Concatenation modifies the original data in order to provide a continuous signal.
+
+        ----------
+        Returns:
+        train : dictionary containing the keys 'label', 'affected' and 'non_affected'.
+            'label': numpy array of integers containing the class labels (according to 'class_dict').
+            'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
+            'non-affected': same as above but contains the data for the unaffected leg.
+            Contains only the data from the specified set.
+
+        test : dictinary, same format as above.
+            Contains only the data from the test set.
+        
+        ----------
+        Raises:
+        ValueError: If 'dataset'  is neither 'TRAIN_BALANCED' nor 'TRAIN'.
+        """
+
+        if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
+            raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
+
+        train = self.fetch_set(onlyInitial, dropOrthopedics, dataset, raw, stepsize, averageTrials, scaler, concat)
+        test = self.fetch_set(onlyInitial, dropOrthopedics, "TEST", raw, stepsize, averageTrials, scaler, concat)
+
+        return train, test
+
+
+    def fetch_set(self, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", raw=False, stepsize=1, averageTrials=True, scaler=None, concat=False):
+        """Reads and preprocesses all 5 force components for the specified dataset.
+
+        Parameters:
+        OnlyInital : bool, default=False
+            If True, only inital measurements (excluding control measurements and readmissions) are returned.
+
+        dropOrthopedics : string, default="None"
+            Patients using orthopedic aids are ommitted according to this specification. 
+            Possible values are:
+            "None":     No patients are omitted.
+            "Verified": All patients using orthpedic aids are omitted.
+            "All":      Only patients using no orthopedic aids are returned (i.e. NaNs are omitted).
+
+        dataset : string, default="TRAIN_BALANCED"
+            Only measurements included in the specified dataset are returned.
+            Possible values are "TRAIN_BALANCED", "TRAIN" and "TEST".
+
+        raw : bool, default=False
+            If True the files containing the raw data are used instead of the normalized ones.
+
+        stepsize : int, double, default=1
+            Has to be int if working with processed data. Specifies the interval at which to sample the data.
+            If stepsize = 1 all datapoints are used, if stepsize = 2, every second datapoint is used and so on.
+            For raw data the number of samples is calculated at a basis of 100.
+            The number or resamples = 100/stepsize rounded down.
+
+        averageTrials : bool, default=True
+            If True all trial recorded within the same session are reduced to 1 averaged measurement.
+            Otherwise no modifications are made.
+
+        scaler : GRFScaler, default=None
+            If a scaler is provided, it is used to normalize the data.
+
+        concat : bool, default=False
+            If True, the force components are concatenated according to the order specified in 'comp_order'.
+            Concatenation modifies the original data in order to provide a continuous signal.
+
+        ----------
+        Returns:
+        data : dictionary containing the keys 'label', 'affected' and 'non_affected'.
+            'label': numpy array of integers containing the class labels (according to 'class_dict').
+            'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
+            'non-affected': same as above but contains the data for the unaffected leg.
+        
+        ----------
+        Raises:
+        ValueError: If either 'dataset' or 'dropOrthopedics' are not within the valid range of data.
+        """
+        
+        if dataset not in ["TEST", "TRAIN", "TRAIN_BALANCED"]:
+            raise ValueError("Dataset {} does not exist. Please use one of 'TEST'/'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
+        if dropOrthopedics not in ["None", "Verified", "All"]:
+            raise ValueError("{} is not an option for dropOrthopedics. Please use one of 'None'/'Verified'/'All'.".format(dropOrthopedics))
         metadata = self.__fetch_metadata()
 
         if onlyInitial:
             metadata = _select_initial_measurements(metadata)
-        if dropOrthopedics:
-            metadata = _drop_orthopedics(metadata)
+        metadata = _drop_orthopedics(metadata, dropOrthopedics)
 
         metadata = _trim_metadata(metadata, keepNormParams=raw)
         metadata = _select_dataset(metadata, dataset)
@@ -288,19 +430,34 @@ def _select_initial_measurements(metadata):
     return metadata[metadata["SESSION_TYPE"] == 1]
         
 
-def _drop_orthopedics(metadata):
+def _drop_orthopedics(metadata, dropOrthopedics):
     """Selects and returns only data that was recorded without orthopedic equipment (e.g. orthopedic shoes or inlays).
 
     Parameters:
     metadata : DataFrame
         Containing the metadata information from which to select.
 
+    dropOrthopedics : string
+        Patients using orthopedic aids are ommitted according to this specification. 
+        Possible values are:
+        "None":     No patients are omitted.
+        "Verified": All patients using orthpedic aids are omitted.
+        "All":      Only patients using no orthopedic aids are returned (i.e. NaNs are omitted).
+
+    ----------
     Returns:
         DataFrame
-        Containing only measurments taken without orthopedic aids.
+        Containing only measurments taken in accordance with the provided specification.
     """
+    
+    if dropOrthopedics == "Verified":
+        return metadata[(metadata["SHOD_CONDITION"] < 2) & (metadata["ORTHOPEDIC_INSOLE"] != 1)]
 
-    return metadata[(metadata["SHOD_CONDITION"] < 2) & (metadata["ORTHOPEDIC_INSOLE"] != 1)]
+    if dropOrthopedics == "All":
+        return metadata[(metadata["SHOD_CONDITION"] < 2) & (metadata["ORTHOPEDIC_INSOLE"] < 1)]
+
+    # if none of the above is True, don't change the data
+    return metadata
 
 
 def _trim_metadata(metadata, keepNormParams):
