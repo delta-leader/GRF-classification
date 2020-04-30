@@ -69,7 +69,7 @@ class GRFScaler(object):
         """
 
         self.__is_valid_dict(GRFData)
-        for component in self.comp_list:
+        for component in GRFData.keys():
             self.scaler[component].fit(np.reshape(GRFData[component], (-1, 1)))
         self.isFitted = True
 
@@ -94,7 +94,7 @@ class GRFScaler(object):
         """
 
         self.__is_valid_dict(GRFData)
-        for component in self.comp_list:
+        for component in GRFData.keys():
             self.scaler[component].partial_fit(np.reshape(GRFData[component], (-1, 1)))
         self.isFitted = True
 
@@ -138,12 +138,13 @@ class GRFScaler(object):
 
         self.__is_valid_dict(GRFData)
         transformed_GRFData = {}
-        for component in self.comp_list:
+        for component in GRFData.keys():
             len_series = GRFData[component].shape[1]
             transformed_data = self.scaler[component].transform(np.reshape(GRFData[component], (-1, 1)))
             transformed_GRFData[component] = np.reshape(transformed_data, (-1, len_series))
 
         return transformed_GRFData
+
 
     def get_type(self):
         """Returns the type of the scaler.
@@ -229,11 +230,14 @@ class GRFScaler(object):
         The data to be verified.
         ----------
         Raises:
-        ValueError : if the received parameter is not a dictionary, or does not contain one of the force components.
+        ValueError : if the received parameter is not a dictionary, or does not contain exactly the same force components as 'comp_list'.
         """
 
         if type(GRFData) is not dict:
             raise ValueError("Expected GRFData to be of type '{}', but received type '{}'.".format(type(dict), type(GRFData)))
+
+        if len(self.comp_list) != len(GRFData):
+            raise ValueError("GRFData contains {} entries, but expected {}.".format(len(GRFData), len(self.comp_list)))
 
         for component in self.comp_list:
             if component not in GRFData.keys():

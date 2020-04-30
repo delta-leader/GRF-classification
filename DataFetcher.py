@@ -57,8 +57,26 @@ class DataFetcher(object):
         self.filepath = filepath
         self.class_dict = {"HC":0, "H":1, "K":2, "A":3, "C":4}
         self.comp_order = ["f_v", "f_ap", "f_ml", "cop_ap", "cop_ml"] 
+        self.randSeed = 42
 
-    #TODO implement set_comp_order
+
+    def set_randSeet(self, seed):
+        """Sets the seed for the random number generator used to determine the affected side in ambigous cases (e.g. healthy control)
+
+        Parameters:
+        seed: int
+            Seed for the random number generator.
+
+        ----------
+        Raises:
+        TypeError: If the parameter passed is not an integer value.
+        """
+
+        if type(seed) is not int:
+            raise TypeError("Seed is not an integer.")
+        else:
+            self.randSeed = seed
+
     def get_comp_order(self):
         """Returns a list of all force components.
         The order in the list corresponds to the order of the force components in the final output.
@@ -82,8 +100,13 @@ class DataFetcher(object):
 
         ----------
         Raises:
+        TypeError: If the provided 'comp_order' is not a list.
+
         ValueError : If one of the force component is not included in the new list or if the same component appears more than once.
         """
+
+        if type(comp_order) is not list:
+            raise TypeError("The provided component-order is not a list.")
 
         if len(comp_order) != len(self.comp_order):
             raise ValueError("Length of the new component order does not match the old one. {} vs {}". format(len(comp_order), len(self.comp_order)))
@@ -99,11 +122,14 @@ class DataFetcher(object):
         self.comp_order = comp_order
 
 
-    def fetch_data(self, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", raw=False, stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
         """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
         Both the specified dataset and the test set are processed in the same manner.
 
         Parameters:
+        raw : bool, default=False
+            If True the files containing the raw data are used instead of the normalized ones.
+
         OnlyInital : bool, default=False
             If True, only inital measurements (excluding control measurements and readmissions) are returned.
 
@@ -117,9 +143,6 @@ class DataFetcher(object):
         dataset : string, default="TRAIN_BALANCED"
             Only measurements included in the specified dataset AND the test set are returned.
             Possible values are "TRAIN_BALANCED" and "TRAIN".
-
-        raw : bool, default=False
-            If True the files containing the raw data are used instead of the normalized ones.
 
         stepsize : int, double, default=1
             Has to be int if working with processed data. Specifies the interval at which to sample the data.
@@ -157,16 +180,19 @@ class DataFetcher(object):
         if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
 
-        train = self.fetch_set(onlyInitial, dropOrthopedics, dataset, raw, stepsize, averageTrials, scaler, concat)
-        test = self.fetch_set(onlyInitial, dropOrthopedics, "TEST", raw, stepsize, averageTrials, scaler, concat)
+        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dataset, stepsize, averageTrials, scaler, concat)
+        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, "TEST", stepsize, averageTrials, scaler, concat)
 
         return train, test
 
 
-    def fetch_set(self, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", raw=False, stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
         """Reads and preprocesses all 5 force components for the specified dataset.
 
         Parameters:
+        raw : bool, default=False
+            If True the files containing the raw data are used instead of the normalized ones.
+
         OnlyInital : bool, default=False
             If True, only inital measurements (excluding control measurements and readmissions) are returned.
 
@@ -180,9 +206,6 @@ class DataFetcher(object):
         dataset : string, default="TRAIN_BALANCED"
             Only measurements included in the specified dataset are returned.
             Possible values are "TRAIN_BALANCED", "TRAIN" and "TEST".
-
-        raw : bool, default=False
-            If True the files containing the raw data are used instead of the normalized ones.
 
         stepsize : int, double, default=1
             Has to be int if working with processed data. Specifies the interval at which to sample the data.
@@ -240,17 +263,18 @@ class DataFetcher(object):
             if not scaler.is_fitted():
                 _fit_scaler(scaler, (left, right))
 
-        for leg in [left, right]:
-            if scaler != None:
-                leg = _scale(scaler, leg)
-            if concat:
-                leg = self.__concat(leg)
-                # testing purposes only
-                # assert that the range is still valid
+        if scaler != None:
+            left, right = [_scale(scaler, leg) for leg in (left, right)]
+
+        if concat:
+            left, right = [self.__concat(leg) for leg in (left, right)]
+            # testing purposes only - assert that the range is still valid
+            for leg in (left, right):
                 _assert_scale(leg, scaler)
 
-        affected, non_affected = _arrange_data(left, right, metadata, randSeed=42)
-        data = self.__split_and_format(affected, non_affected)
+        affected, non_affected = self.__arrange_data(left, right, metadata)
+        data = self.__split_and_format(affected, non_affected, metadata)
+        #TODO remove print
         print(data["affected"].shape)
 
         return data     
@@ -374,7 +398,7 @@ class DataFetcher(object):
         return {"concat": concat_series}
 
 
-    def __split_and_format(self, affected, non_affected):
+    def __split_and_format(self, affected, non_affected, metadata):
         """Splits the provided data into values and labels.
         Values are formatted into single-precision numpy-arrays.
         Labels are transformed into integers (specified in 'class_dict').
@@ -388,14 +412,18 @@ class DataFetcher(object):
         non_affected : dictionary containing all five force components, either concatenated or not.
             The data for the unaffected side.
 
+        metadata: DataFrame
+            Containing all the metadata information (e.g. the class label).
+
         ----------
         Returns:
         data : dictionary containing the keys 'label', 'affected' and 'non_affected'
             Contains the labels (as integers) and the data for the affected/unaffected side (as float32).
         """
 
+        label_info = metadata[["SESSION_ID", "CLASS_LABEL",]].set_index("SESSION_ID")
         keys = affected.keys()
-        labels = affected[list(keys)[0]]["CLASS_LABEL"].map(self.class_dict)
+        labels = affected[list(keys)[0]].join(label_info, on="SESSION_ID")["CLASS_LABEL"].map(self.class_dict)
         data = {"label": labels.values}
 
         affected_formatted = {}
@@ -414,6 +442,96 @@ class DataFetcher(object):
             data["non_affected"] = np.moveaxis(non_affected_formatted, 0, -1)
 
         return data
+
+
+    def __arrange_data(self, left_dict, right_dict, metadata):
+        """Combines the data from both legs and seperates them in signals for the affected and unaffected side.
+        If the affected side can not be determined unambiguously (e.g. both sides none are affected), the signal used
+        for the affected side is choosen at random.
+
+        Parameters:
+        left_dict : dictionary containing all five force components, either concatenated or not.
+            The data for the left leg.
+
+        right_dict : dictionary containing all five force components, either concatenated or not.
+            The data for the right leg.
+
+        metadata : DataFrame
+            Containing all the metadata information (e.g. the information about which side is affected).
+
+        ----------
+        Returns:
+        affected : dictionary, same format as input.
+            Contains all the data for the affected side (including the class label).
+            The order of the components in the dictionary corresponds to the order set in 'comp_order'.
+
+        non_affected : dictionary, same format as input.
+            Contains all the data for the unaffected side (including the class label).
+            The order of the components in the dictionary corresponds to the order set in 'comp_order'.
+        """
+
+        if "concat" in left_dict.keys():
+            key_order = ["concat"]
+        else:
+            key_order = self.comp_order
+
+        leftSide_affected = self.__determine_affected_side(left_dict[key_order[0]], metadata)
+        rightSide_affected =  np.invert(leftSide_affected)
+        
+        affected = {}
+        non_affected = {}
+        for component in key_order:       
+            affected[component] = left_dict[component][leftSide_affected]
+            affected[component] = affected[component].append(right_dict[component][rightSide_affected], sort=False)
+            non_affected[component] = right_dict[component][leftSide_affected]
+            non_affected[component] = non_affected[component].append(left_dict[component][rightSide_affected], sort=False)
+
+            # testing purposes only
+            assert affected[component].shape == non_affected[component].shape == left_dict[component].shape, "Length does not match after arranging the data."
+            # assert again
+            if "TRIAL_ID" in affected[component].columns:
+                assert affected[component][["SESSION_ID", "TRIAL_ID"]].equals(non_affected[component][["SESSION_ID", "TRIAL_ID"]]), "The order of the data is not preserved."
+                assert affected[list(affected.keys())[0]][["SESSION_ID", "TRIAL_ID"]].equals(non_affected[component][["SESSION_ID", "TRIAL_ID"]]), "The order of the data is not preserved across components."
+            else:
+                assert affected[component]["SESSION_ID"].equals(non_affected[component]["SESSION_ID"]), "The order of the data is not preserved."
+                assert affected[list(affected.keys())[0]]["SESSION_ID"].equals(non_affected[component]["SESSION_ID"]), "The order of the data is not preserved across components."
+
+        return affected, non_affected
+
+    
+    def __determine_affected_side(self, data, metadata):
+        """Determines the affected Side of the provided data. If the affected side can not be determined unambiguously
+        (e.g. both sides are affected/non-affected), the affected side is choosen at random.
+
+        Parameters:
+        data: DataFrame
+            Contains a sampling of the data for which the affected side needs to be determined. It does not matter which leg or force-component
+            is choosen because the inital ordering (i.e. in the files) is the same.
+
+        metadata: DataFrame
+            Containing all the metadata information (e.g. the information about which side is affected).
+
+        ----------
+        Returns:
+        leftSide_affected: ndarray
+            Same length as as data, boolean numpy array containing one value for each sample (True if the left side is the affected side, False otherwise).
+        """
+
+        affected_info = metadata[["SESSION_ID", "AFFECTED_SIDE"]].set_index("SESSION_ID")
+        random.seed(self.randSeed)
+
+        def is_leftSide_affected(x):
+            if x == 0:
+                return True
+            if x == 1:
+                return False
+            return not random.getrandbits(1)
+
+        affected_info["LEFT_AFFECTED"] = affected_info["AFFECTED_SIDE"].apply(is_leftSide_affected)
+        data = data.join(affected_info, on="SESSION_ID")
+        #TODO account for same person across multiple sessions
+
+        return data["LEFT_AFFECTED"].values
 
 
 
@@ -599,6 +717,7 @@ def _sample(data_dict, stepsize, raw):
     else:
         if type(stepsize) is not int:
             raise TypeError("Stepsize is not an integer.")
+    
         # processed data sampling simply skips steps
         if stepsize > 1:
             usecols = [0, 1, 2] + [x for x in range(3, 104, stepsize)]
@@ -635,76 +754,6 @@ def _average_trials(data_dict):
         assert avg_dict[component]["SESSION_ID"].is_unique, "There was an error when averaging the Trials, duplicate SESSION_IDs remain."
 
     return avg_dict
-
-
-def _arrange_data(left_dict, right_dict, metadata, randSeed):
-    """Combines the data from both legs and seperates them in signals for the affected and unaffected side.
-    If the affected side can not be determined unambiguously (e.g. both sides none are affected), the signal used
-    for the affected side is choosen at random.
-    Furthermore the class label is appended to each measurement.
-
-    Parameters:
-    left_dict : dictionary containing all five force components, either concatenated or not.
-        The data for the left leg.
-
-    right_dict : dictionary containing all five force components, either concatenated or not.
-        The data for the right leg.
-
-    metadata : DataFrame
-        Containing all the metadata information (e.g. the information about which side is affected).
-
-    randSeed : int 
-        The seed for the random number generator.
-
-    ----------
-    Returns:
-    affected : dictionary, same format as input.
-        Contains all the data for the affected side (including the class label).
-
-    non_affected : dictionary, same format as input.
-        Contains all the data for the unaffected side (including the class label).
-    """
-
-    info = metadata[["SESSION_ID", "CLASS_LABEL", "AFFECTED_SIDE"]].set_index("SESSION_ID")
-    random.seed(randSeed)
-
-    def is_leftSide_affected(x):
-        if x == 0:
-            return True
-        if x == 1:
-            return False
-        return not random.getrandbits(1)
-        
-    affected = {}
-    non_affected = {}
-    for component in left_dict:
-        left = left_dict[component].join(info, on="SESSION_ID")
-        right = right_dict[component].join(info, on="SESSION_ID")
-
-        # testing purposes only
-        # assert order
-        if "TRIAL_ID" in left.columns:
-            assert left[["SESSION_ID", "TRIAL_ID"]].equals(right[["SESSION_ID", "TRIAL_ID"]]), "The order of the data is not preserved."
-        else:
-            assert left["SESSION_ID"].equals(right["SESSION_ID"]), "The order of the data is not preserved."
-
-        leftSide_affected = left["AFFECTED_SIDE"].apply(is_leftSide_affected).values
-        rightSide_affected =  np.invert(leftSide_affected)
-        
-        affected[component] = left[leftSide_affected]
-        affected[component] = affected[component].append(right[rightSide_affected], sort=False)
-        non_affected[component] = right[leftSide_affected]
-        non_affected[component] = non_affected[component].append(left[rightSide_affected], sort=False)
-
-        # testing purposes only
-        assert affected[component].shape == non_affected[component].shape == left.shape, "Length does not match after arranging the data."
-        # assert order again
-        if "TRIAL_ID" in affected[component].columns:
-            assert affected[component][["SESSION_ID", "TRIAL_ID"]].equals(non_affected[component][["SESSION_ID", "TRIAL_ID"]]), "The order of the data is not preserved."
-        else:
-            assert affected[component]["SESSION_ID"].equals(non_affected[component]["SESSION_ID"]), "The order of the data is not preserved."
-
-    return affected, non_affected
 
 
 def _format_data(data):
