@@ -122,7 +122,7 @@ class DataFetcher(object):
         self.comp_order = comp_order
 
 
-    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
         """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
         Both the specified dataset and the test set are processed in the same manner.
 
@@ -139,6 +139,9 @@ class DataFetcher(object):
             "None":     No patients are omitted.
             "Verified": All patients using orthpedic aids are omitted.
             "All":      Only patients using no orthopedic aids are returned (i.e. NaNs are omitted).
+
+        dropBothSidesAffected : bool, default=False
+            If True, paritipants with injuries in both legs are excluded (i.e. only returns measurements where either one or no side is affected).
 
         dataset : string, default="TRAIN_BALANCED"
             Only measurements included in the specified dataset AND the test set are returned.
@@ -180,13 +183,13 @@ class DataFetcher(object):
         if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
 
-        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dataset, stepsize, averageTrials, scaler, concat)
-        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, "TEST", stepsize, averageTrials, scaler, concat)
+        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat)
+        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat)
 
         return train, test
 
 
-    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
         """Reads and preprocesses all 5 force components for the specified dataset.
 
         Parameters:
@@ -202,6 +205,9 @@ class DataFetcher(object):
             "None":     No patients are omitted.
             "Verified": All patients using orthpedic aids are omitted.
             "All":      Only patients using no orthopedic aids are returned (i.e. NaNs are omitted).
+
+        dropBothSidesAffected : bool, default=False
+            If True, paritipants with injuries in both legs are excluded (i.e. only returns measurements where either one or no side is affected).
 
         dataset : string, default="TRAIN_BALANCED"
             Only measurements included in the specified dataset are returned.
@@ -246,6 +252,8 @@ class DataFetcher(object):
 
         if onlyInitial:
             metadata = _select_initial_measurements(metadata)
+        if dropBothSidesAffected:
+            metadata = _drop_both_sides_affected(metadata)
         metadata = _drop_orthopedics(metadata, dropOrthopedics)
 
         metadata = _trim_metadata(metadata, keepNormParams=raw)
@@ -580,6 +588,21 @@ def _drop_orthopedics(metadata, dropOrthopedics):
 
     # if none of the above is True, don't change the data
     return metadata
+
+
+def _drop_both_sides_affected(metadata):
+    """Selects and returns only measurements where either one or no leg is injured.
+
+    Parameters:
+    metadata : DataFrame
+        Containing the metadata information from which to select.
+
+    Returns:
+        DataFrame
+        Containing only measurements where one or no leg is affectted.
+    """
+
+    return metadata[metadata["AFFECTED_SIDE"] != 2]
 
 
 def _trim_metadata(metadata, keepNormParams):

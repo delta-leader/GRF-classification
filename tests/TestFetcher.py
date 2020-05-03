@@ -32,15 +32,15 @@ class TestFetcher(unittest.TestCase):
     def test_fetch(self):
         fetcher = DataFetcher(filepath)
 
-        self.__assert_data_arrangment(fetcher)
-        self.__assert_class_labels(fetcher)
+        #self.__assert_data_arrangment(fetcher)
+        #self.__assert_class_labels(fetcher)
         self.__assert_data_selection(fetcher)
-        self.__assert_sampling(fetcher)
-        self.__assert_averaging(fetcher)
-        self.__assert_scaling(fetcher)
-        self.__assert_concat(fetcher)
-        self.__assert_rand(fetcher)
-        self.__assert_comp_order(fetcher)
+        #self.__assert_sampling(fetcher)
+        #self.__assert_averaging(fetcher)
+        #self.__assert_scaling(fetcher)
+        #self.__assert_concat(fetcher)
+        #self.__assert_rand(fetcher)
+        #self.__assert_comp_order(fetcher)
 
 
         
@@ -101,9 +101,9 @@ class TestFetcher(unittest.TestCase):
         """Check whether the right amound of data is selected (i.e. all corresponding samples).
         Additionally check for correct exceptions if invalid parameters are passed for data-selection.
         """
-        
+        """
         # Verify for averaged data
-        train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="None", dataset="TRAIN")
+        train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN")
         assert train["affected"].shape[0] == 5817, "Wrong number of measurements in TRAIN. {} vs 5817.".format(train["affected"].shape[0])
         assert train["non_affected"].shape == (5817, 101, 5), "Wrong shape of output data in TRAIN. {} vs (5817, 101, 5).".format(train["non_affected"].shape)
         assert train["label"].shape[0] == 5817, "Wrong number of labels in TRAIN. {} vs 5817.".format(train["label"].shape[0])
@@ -111,7 +111,7 @@ class TestFetcher(unittest.TestCase):
         assert test["non_affected"].shape == (2617, 101, 5), "Wrong shape of output data in TEST. {} vs (2617, 101, 5).".format(test["non_affected"].shape)
         assert test["label"].shape[0] == 2617, "Wrong number of labels in TEST. {} vs 2617.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(raw= True, onlyInitial=True, dropOrthopedics="None", dataset="TRAIN")
+        train, test = fetcher.fetch_data(raw= True, onlyInitial=True, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN")
         assert train["non_affected"].shape[0] == 1463, "Wrong number of measurements in TRAIN. {} vs 1463.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (1463, 100, 5), "Wrong shape of output data in TRAIN. {} vs (1463, 100, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 1463, "Wrong number of labels in TRAIN. {} vs 1463.".format(train["label"].shape[0])
@@ -119,7 +119,7 @@ class TestFetcher(unittest.TestCase):
         assert test["affected"].shape == (704, 100, 5), "Wrong shape of output data in TEST. {} vs (704, 100, 5).".format(test["affected"].shape)
         assert test["label"].shape[0] == 704, "Wrong number of labels in TEST. {} vs 704.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="Verified", dataset="TRAIN")
+        train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="Verified", dropBothSidesAffected=False, dataset="TRAIN")
         assert train["affected"].shape[0] == 4820, "Wrong number of measurements in TRAIN. {} vs 4820.".format(train["affected"].shape[0])
         assert train["non_affected"].shape == (4820, 101, 5), "Wrong shape of output data in TRAIN. {} vs (4820, 101, 5).".format(train["non_affected"].shape)
         assert train["label"].shape[0] == 4820, "Wrong number of labels in TRAIN. {} vs 4820.".format(train["label"].shape[0])
@@ -127,7 +127,7 @@ class TestFetcher(unittest.TestCase):
         assert test["affected"].shape == (2270, 101, 5), "Wrong shape of output data in TEST. {} vs (2270, 101, 5).".format(test["affected"].shape)
         assert test["label"].shape[0] == 2270, "Wrong number of labels in TEST. {} vs 2270.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(raw=True, onlyInitial=True, dropOrthopedics="All", dataset="TRAIN")
+        train, test = fetcher.fetch_data(raw=True, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN")
         assert train["non_affected"].shape[0] == 1234, "Wrong number of measurements in TRAIN. {} vs 1234.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (1234, 100, 5), "Wrong shape of output data in TRAIN. {} vs (1234, 100, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 1234, "Wrong number of labels in TRAIN. {} vs 1234.".format(train["label"].shape[0])
@@ -135,14 +135,35 @@ class TestFetcher(unittest.TestCase):
         assert test["non_affected"].shape == (688, 100, 5), "Wrong shape of output data in TEST. {} vs (688, 100, 5).".format(test["non_affected"].shape)
         assert test["label"].shape[0] == 688, "Wrong number of labels in TEST. {} vs 688.".format(test["label"].shape[0])
 
-        train = fetcher.fetch_set(onlyInitial=True, dropOrthopedics="All", dataset="TRAIN_BALANCED")
+        train = fetcher.fetch_set(onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED")
         assert train["non_affected"].shape[0] == 730, "Wrong number of measurements in TRAIN_BALANCED. {} vs 730.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (730, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (730, 101, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 730, "Wrong number of labels in TRAIN_BALANCED. {} vs 730.".format(train["label"].shape[0])
-        train = fetcher.fetch_set(raw=True, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED")
+        train = fetcher.fetch_set(raw=True, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED")
         assert train["non_affected"].shape[0] == 730, "Wrong number of measurements in TRAIN_BALANCED. {} vs 730.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (730, 100, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (730, 100, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 730, "Wrong number of labels in TRAIN_BALANCED. {} vs 730.".format(train["label"].shape[0])
+
+        train, test = fetcher.fetch_data(raw= True, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=True, dataset="TRAIN", averageTrials=True)
+        assert train["affected"].shape[0] == 5539, "Wrong number of measurements in TRAIN. {} vs 5539.".format(train["affected"].shape[0])
+        assert train["non_affected"].shape == (5539, 100, 5), "Wrong shape of output data in TRAIN. {} vs (5539, 100, 5).".format(train["non_affected"].shape)
+        assert train["label"].shape[0] == 5539, "Wrong number of labels in TRAIN. {} vs 5539.".format(train["label"].shape[0])
+        assert test["affected"].shape[0] == 2478, "Wrong number of measurements in TEST. {} vs 2478.".format(test["affected"].shape[0])
+        assert test["non_affected"].shape == (2478, 100, 5), "Wrong shape of output data in TEST. {} vs (2478, 100, 5).".format(test["non_affected"].shape)
+        assert test["label"].shape[0] == 2478, "Wrong number of labels in TEST. {} vs 2478.".format(test["label"].shape[0])
+
+        train, test = fetcher.fetch_data(raw= False, onlyInitial=False, dropOrthopedics="All", dropBothSidesAffected=True, dataset="TRAIN", averageTrials=True)
+        assert train["affected"].shape[0] == 4151, "Wrong number of measurements in TRAIN. {} vs 4151.".format(train["affected"].shape[0])
+        assert train["non_affected"].shape == (4151, 101, 5), "Wrong shape of output data in TRAIN. {} vs (4151, 101, 5).".format(train["non_affected"].shape)
+        assert train["label"].shape[0] == 4151, "Wrong number of labels in TRAIN. {} vs 4151.".format(train["label"].shape[0])
+        assert test["affected"].shape[0] == 2079, "Wrong number of measurements in TEST. {} vs 2079.".format(test["affected"].shape[0])
+        assert test["non_affected"].shape == (2079, 101, 5), "Wrong shape of output data in TEST. {} vs (2079, 101, 5).".format(test["non_affected"].shape)
+        assert test["label"].shape[0] == 2079, "Wrong number of labels in TEST. {} vs 2079.".format(test["label"].shape[0])
+
+        train = fetcher.fetch_set(onlyInitial=True, dropOrthopedics="Verified", dropBothSidesAffected=True, dataset="TRAIN_BALANCED")
+        assert train["non_affected"].shape[0] == 707, "Wrong number of measurements in TRAIN_BALANCED. {} vs 707.".format(train["non_affected"].shape[0])
+        assert train["affected"].shape == (707, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (707, 101, 5).".format(train["affected"].shape)
+        assert train["label"].shape[0] == 707, "Wrong number of labels in TRAIN_BALANCED. {} vs 707.".format(train["label"].shape[0])
 
 
         # Verify exceptions
@@ -157,7 +178,7 @@ class TestFetcher(unittest.TestCase):
 
         
         # Verify for non-averaged data
-        train, test = fetcher.fetch_data(raw= True, onlyInitial=False, dropOrthopedics="None", dataset="TRAIN", averageTrials=False)
+        train, test = fetcher.fetch_data(raw= True, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN", averageTrials=False)
         assert train["affected"].shape[0] == 48681, "Wrong number of measurements in TRAIN. {} vs 48681.".format(train["affected"].shape[0])
         assert train["non_affected"].shape == (48681, 100, 5), "Wrong shape of output data in TRAIN. {} vs (48681, 100, 5).".format(train["non_affected"].shape)
         assert train["label"].shape[0] == 48681, "Wrong number of labels in TRAIN. {} vs 48681.".format(train["label"].shape[0])
@@ -165,7 +186,7 @@ class TestFetcher(unittest.TestCase):
         assert test["non_affected"].shape == (21776, 100, 5), "Wrong shape of output data in TEST. {} vs (21776, 100, 5).".format(test["non_affected"].shape)
         assert test["label"].shape[0] == 21776, "Wrong number of labels in TEST. {} vs 21776.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="None", dataset="TRAIN", averageTrials=False)
+        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN", averageTrials=False)
         assert train["non_affected"].shape[0] == 12206, "Wrong number of measurements in TRAIN. {} vs 12206.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (12206, 101, 5), "Wrong shape of output data in TRAIN. {} vs (12206, 101, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 12206, "Wrong number of labels in TRAIN. {} vs 12206.".format(train["label"].shape[0])
@@ -173,7 +194,7 @@ class TestFetcher(unittest.TestCase):
         assert test["affected"].shape == (5542, 101, 5), "Wrong shape of output data in TEST. {} vs (5542, 101, 5).".format(test["affected"].shape)
         assert test["label"].shape[0] == 5542, "Wrong number of labels in TEST. {} vs 704.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(raw=True, onlyInitial=False, dropOrthopedics="Verified", dataset="TRAIN", averageTrials=False)
+        train, test = fetcher.fetch_data(raw=True, onlyInitial=False, dropOrthopedics="Verified", dropBothSidesAffected=False, dataset="TRAIN", averageTrials=False)
         assert train["affected"].shape[0] == 40340, "Wrong number of measurements in TRAIN. {} vs 40340.".format(train["affected"].shape[0])
         assert train["non_affected"].shape == (40340, 100, 5), "Wrong shape of output data in TRAIN. {} vs (40340, 100, 5).".format(train["non_affected"].shape)
         assert train["label"].shape[0] == 40340, "Wrong number of labels in TRAIN. {} vs 40340.".format(train["label"].shape[0])
@@ -181,7 +202,7 @@ class TestFetcher(unittest.TestCase):
         assert test["affected"].shape == (18880, 100, 5), "Wrong shape of output data in TEST. {} vs (18880, 100, 5).".format(test["affected"].shape)
         assert test["label"].shape[0] == 18880, "Wrong number of labels in TEST. {} vs 18880.".format(test["label"].shape[0])
 
-        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="All", dataset="TRAIN", averageTrials=False)
+        train, test = fetcher.fetch_data(onlyInitial=True, dropOrthopedics="All", dataset="TRAIN", dropBothSidesAffected=False, averageTrials=False)
         assert train["non_affected"].shape[0] == 10386, "Wrong number of measurements in TRAIN. {} vs 10386.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (10386, 101, 5), "Wrong shape of output data in TRAIN. {} vs (10386, 101, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 10386, "Wrong number of labels in TRAIN. {} vs 10386.".format(train["label"].shape[0])
@@ -189,14 +210,35 @@ class TestFetcher(unittest.TestCase):
         assert test["non_affected"].shape == (5408, 101, 5), "Wrong shape of output data in TEST. {} vs (5408, 101, 5).".format(test["non_affected"].shape)
         assert test["label"].shape[0] == 5408, "Wrong number of labels in TEST. {} vs 5408.".format(test["label"].shape[0])
 
-        train = fetcher.fetch_set(raw=True, onlyInitial=True, dropOrthopedics="All", dataset="TRAIN_BALANCED", averageTrials=False)
+        train = fetcher.fetch_set(raw=True, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", averageTrials=False)
         assert train["non_affected"].shape[0] == 6400, "Wrong number of measurements in TRAIN_BALANCED. {} vs 6400.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (6400, 100, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (6400, 100, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 6400, "Wrong number of labels in TRAIN_BALANCED. {} vs 6400.".format(train["label"].shape[0])
-        train = fetcher.fetch_set(onlyInitial=False, dropOrthopedics="None", dataset="TRAIN_BALANCED", averageTrials=False)
+        train = fetcher.fetch_set(onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", averageTrials=False)
         assert train["non_affected"].shape[0] == 6400, "Wrong number of measurements in TRAIN_BALANCED. {} vs 6400.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (6400, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (6400, 101, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 6400, "Wrong number of labels in TRAIN_BALANCED. {} vs 6400.".format(train["label"].shape[0])
+        """               
+        train, test = fetcher.fetch_data(raw= False, onlyInitial=True, dropOrthopedics="None", dropBothSidesAffected=True, dataset="TRAIN", averageTrials=False)
+        assert train["affected"].shape[0] == 11665, "Wrong number of measurements in TRAIN. {} vs 11665.".format(train["affected"].shape[0])
+        assert train["non_affected"].shape == (11665, 101, 5), "Wrong shape of output data in TRAIN. {} vs (11665, 101, 5).".format(train["non_affected"].shape)
+        assert train["label"].shape[0] == 11665, "Wrong number of labels in TRAIN. {} vs 11665.".format(train["label"].shape[0])
+        assert test["affected"].shape[0] == 5264, "Wrong number of measurements in TEST. {} vs 5264.".format(test["affected"].shape[0])
+        assert test["non_affected"].shape == (5264, 101, 5), "Wrong shape of output data in TEST. {} vs (5264, 101, 5).".format(test["non_affected"].shape)
+        assert test["label"].shape[0] == 5264, "Wrong number of labels in TEST. {} vs 5264.".format(test["label"].shape[0])
+
+        train, test = fetcher.fetch_data(raw= True, onlyInitial=True, dropOrthopedics="Verified", dropBothSidesAffected=True, dataset="TRAIN", averageTrials=False)
+        assert train["affected"].shape[0] == 10919, "Wrong number of measurements in TRAIN. {} vs 10919.".format(train["affected"].shape[0])
+        assert train["non_affected"].shape == (10919, 100, 5), "Wrong shape of output data in TRAIN. {} vs (10919, 100, 5).".format(train["non_affected"].shape)
+        assert train["label"].shape[0] == 10919, "Wrong number of labels in TRAIN. {} vs 10919.".format(train["label"].shape[0])
+        assert test["affected"].shape[0] == 5143, "Wrong number of measurements in TEST. {} vs 5143.".format(test["affected"].shape[0])
+        assert test["non_affected"].shape == (5143, 100, 5), "Wrong shape of output data in TEST. {} vs (5143, 100, 5).".format(test["non_affected"].shape)
+        assert test["label"].shape[0] == 5143, "Wrong number of labels in TEST. {} vs 5143.".format(test["label"].shape[0])
+
+        train = fetcher.fetch_set(onlyInitial=False, dropOrthopedics="All", dropBothSidesAffected=True, dataset="TRAIN_BALANCED", averageTrials=False)
+        assert train["non_affected"].shape[0] == 6205, "Wrong number of measurements in TRAIN_BALANCED. {} vs 6205.".format(train["non_affected"].shape[0])
+        assert train["affected"].shape == (6205, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (6205, 101, 5).".format(train["affected"].shape)
+        assert train["label"].shape[0] == 6205, "Wrong number of labels in TRAIN_BALANCED. {} vs 6205.".format(train["label"].shape[0])
         
 
 
