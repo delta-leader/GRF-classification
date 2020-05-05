@@ -32,15 +32,16 @@ class TestFetcher(unittest.TestCase):
     def test_fetch(self):
         fetcher = DataFetcher(filepath)
 
-        #self.__assert_data_arrangment(fetcher)
-        #self.__assert_class_labels(fetcher)
+        self.__assert_data_arrangment(fetcher)
+        self.__assert_class_labels(fetcher)
         self.__assert_data_selection(fetcher)
-        #self.__assert_sampling(fetcher)
-        #self.__assert_averaging(fetcher)
-        #self.__assert_scaling(fetcher)
-        #self.__assert_concat(fetcher)
-        #self.__assert_rand(fetcher)
-        #self.__assert_comp_order(fetcher)
+        self.__assert_sampling(fetcher)
+        self.__assert_averaging(fetcher)
+        self.__assert_scaling(fetcher)
+        self.__assert_concat(fetcher)
+        self.__assert_rand(fetcher)
+        self.__assert_comp_order(fetcher)
+        self.__assert_val_set(fetcher)
 
 
         
@@ -101,7 +102,7 @@ class TestFetcher(unittest.TestCase):
         """Check whether the right amound of data is selected (i.e. all corresponding samples).
         Additionally check for correct exceptions if invalid parameters are passed for data-selection.
         """
-        """
+        
         # Verify for averaged data
         train, test = fetcher.fetch_data(onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN")
         assert train["affected"].shape[0] == 5817, "Wrong number of measurements in TRAIN. {} vs 5817.".format(train["affected"].shape[0])
@@ -218,7 +219,7 @@ class TestFetcher(unittest.TestCase):
         assert train["non_affected"].shape[0] == 6400, "Wrong number of measurements in TRAIN_BALANCED. {} vs 6400.".format(train["non_affected"].shape[0])
         assert train["affected"].shape == (6400, 101, 5), "Wrong shape of output data in TRAIN_BALANCED. {} vs (6400, 101, 5).".format(train["affected"].shape)
         assert train["label"].shape[0] == 6400, "Wrong number of labels in TRAIN_BALANCED. {} vs 6400.".format(train["label"].shape[0])
-        """               
+                 
         train, test = fetcher.fetch_data(raw= False, onlyInitial=True, dropOrthopedics="None", dropBothSidesAffected=True, dataset="TRAIN", averageTrials=False)
         assert train["affected"].shape[0] == 11665, "Wrong number of measurements in TRAIN. {} vs 11665.".format(train["affected"].shape[0])
         assert train["non_affected"].shape == (11665, 101, 5), "Wrong shape of output data in TRAIN. {} vs (11665, 101, 5).".format(train["non_affected"].shape)
@@ -747,6 +748,89 @@ class TestFetcher(unittest.TestCase):
             fetcher.set_comp_order(["cop_ap", "f_v", "f_ap", "f_ml"])
             fetcher.set_comp_order(["cop_ap", "cop_ml", "f_v", "f_ap", "f_ap"])
             fetcher.set_comp_order(["cop_ap", "cop_ap", "f_v", "f_ap", "f_ml"])
+
+
+
+    def __assert_val_set(self, fetcher):
+        """Checks if the data is correctly split into a validation and train set using the 'val_setp' parameter,
+        using the previously specified seed for the random number generator.
+        Additionally verifies whether or not the appropriate expections are thrown."""
+
+        # Verify that there is no validation set unless specified
+        train = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False)
+        assert len(train.keys()) == 3, "Too many keys in the returned set ({})".format(train.keys())
+        for item in ["label", "affected", "non_affected"]:
+            assert item in train, "Key '{}' is missing in the returned set ({})".format(item, train.keys())
+
+        # Verify that the set is split as intended
+        train = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, val_setp=0.5)
+        assert len(train.keys()) == 6, "Not enough keys in the returned set ({})".format(train.keys())
+        for item in ["label", "affected", "non_affected", "label_val", "affected_val", "non_affected_val", ]:
+            assert item in train, "Key '{}' is missing in the returned set ({})".format(item, train.keys())
+        assert train["label"].shape[0] == train["affected"].shape[0] == train["non_affected"].shape[0] == 365, "Shape of training sets does not match."
+        assert train["label_val"].shape[0] == train["affected_val"].shape[0] == train["non_affected_val"].shape[0]  == 365, "Shape of validation sets does not match."
+
+        #Verify that repeated runs deliver the same result
+        train2 = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, val_setp=0.5)
+        assert np.array_equal(train["affected_val"], train2["affected_val"]), "The random number generator was not reset between calls to 'fetch()'"
+
+        # Verify that set_randSeeVal() works as intended
+        fetcher.set_randSeetVal(1024)
+        train2 = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, val_setp=0.5)
+        assert not np.allclose(train["affected_val"][0, : , 0], train2["affected_val"][0, : , 0]), "Changing the sedd of the random number generator did not work properly."
+
+        #Verify exceptions
+        with self.assertRaises(TypeError):
+            fetcher.set_randSeetVal(None)
+            fetcher.set_randSeetVal(True)
+            fetcher.set_randSeetVal("43")
+            fetcher.set_randSeetVal("test")
+            fetcher.set_randSeetVal(-0.1)
+            fetcher.set_randSeetVal(0.54)
+
+
+        # Verify that only the training-set is split
+        train, test = fetcher.fetch_data(raw=True, dataset="TRAIN", averageTrials=False, concat=False, val_setp=0.25)
+        assert len(test.keys()) == 3, "Too many keys in the returned TEST-set ({})".format(test.keys())
+        for item in ["label", "affected", "non_affected"]:
+            assert item in test, "Key '{}' is missing in the returned set ({})".format(item, test.keys())
+        assert test["affected"].shape[0] == 21776, "Number of samples in TEST does not match {} vs. 21776.".format(test["affected"].shape[0])
+        assert len(train.keys()) == 6, "Not enough keys in the returned TRAIN-set ({})".format(train.keys())
+        for item in ["label", "affected", "non_affected", "label_val", "affected_val", "non_affected_val", ]:
+            assert item in train, "Key '{}' is missing in the returned set ({})".format(item, train.keys())
+        assert train["label"].shape[0] == train["affected"].shape[0] == train["non_affected"].shape[0], "Shape of training sets does not match{} {} {}.".format(train["label"].shape[0], train["affected"].shape[0], train["non_affected"].shape[0])
+        assert train["label_val"].shape[0] == train["affected_val"].shape[0] == train["non_affected_val"].shape[0], "Shape of validation sets does not match."
+        assert train["affected_val"].shape[0] >= 48681*0.25, "Not enough samples in validation set: {} (expected {}).".format(train["affected_val"].shape[0], 48681*0.25)
+        assert 48681-train["affected_val"].shape[0] == train["affected"].shape[0], "Number of samples in train and validation set does not match up {} + {} != 48681.".format(train["affected"].shape[0], train["affected_val"].shape[0])
+
+
+        # Verify for concatenated data
+        train = fetcher.fetch_set(raw=True, dataset="TRAIN", averageTrials=False, concat=True, val_setp=0.1)
+        assert len(train.keys()) == 6, "Not enough keys in the returned TRAIN-set ({})".format(train.keys())
+        for item in ["label", "affected", "non_affected", "label_val", "affected_val", "non_affected_val", ]:
+            assert item in train, "Key '{}' is missing in the returned set ({})".format(item, train.keys())
+        assert train["label"].shape[0] == train["affected"].shape[0] == train["non_affected"].shape[0], "Shape of training sets does not match."
+        assert train["label_val"].shape[0] == train["affected_val"].shape[0] == train["non_affected_val"].shape[0], "Shape of validation sets does not match."
+        assert train["affected_val"].shape[0] >= 48681*0.1, "Not enough samples in validation set: {} (expected {}).".format(train["affected_val"].shape[0], 48681*0.1)
+        assert 48681-train["affected_val"].shape[0] == train["affected"].shape[0], "Number of samples in train and validation set does not match up {} + {} != 48681.".format(train["affected"].shape[0], train["affected_val"].shape[0])
+
+        train = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=True, val_setp=0.15)
+        assert len(train.keys()) == 6, "Not enough keys in the returned TRAIN-set ({})".format(train.keys())
+        for item in ["label", "affected", "non_affected", "label_val", "affected_val", "non_affected_val", ]:
+            assert item in train, "Key '{}' is missing in the returned set ({})".format(item, train.keys())
+        assert train["label"].shape[0] == train["affected"].shape[0] == train["non_affected"].shape[0], "Shape of training sets does not match."
+        assert train["label_val"].shape[0] == train["affected_val"].shape[0] == train["non_affected_val"].shape[0], "Shape of validation sets does not match."
+        assert train["affected_val"].shape[0] >= 730*0.15, "Not enough samples in validation set: {} (expected {}).".format(train["affected_val"].shape[0], 730*0.1)
+        assert 730-train["affected_val"].shape[0] == train["affected"].shape[0], "Number of samples in train and validation set does not match up {} + {} != 730.".format(train["affected"].shape[0], train["affected_val"].shape[0])
+
+
+        # Verify exceptions
+        with self.assertRaises(ValueError):
+            fetcher.fetch_set(val_setp=-1)
+            fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=True, val_setp=1.1)
+            fetcher.fetch_set(raw=True, dataset="TRAIN", averageTrials=False, concat=True, val_setp=5)
+            fetcher.fetch_set(val_setp=True)
+            fetcher.fetch_set(val_setp="9")
 
     
 

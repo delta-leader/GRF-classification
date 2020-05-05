@@ -1,5 +1,6 @@
 import os
 import random
+import math
 import numpy as np
 import pandas as pd
 from errno import ENOENT
@@ -58,6 +59,7 @@ class DataFetcher(object):
         self.class_dict = {"HC":0, "H":1, "K":2, "A":3, "C":4}
         self.comp_order = ["f_v", "f_ap", "f_ml", "cop_ap", "cop_ml"] 
         self.randSeed = 42
+        self.randSeedVal = 11
 
 
     def set_randSeet(self, seed):
@@ -76,6 +78,25 @@ class DataFetcher(object):
             raise TypeError("Seed is not an integer.")
         else:
             self.randSeed = seed
+
+
+    def set_randSeetVal(self, seed):
+        """Sets the seed for the random number generator used to determine the validation set.
+
+        Parameters:
+        seed: int
+            Seed for the random number generator.
+
+        ----------
+        Raises:
+        TypeError: If the parameter passed is not an integer value.
+        """
+
+        if type(seed) is not int:
+            raise TypeError("Seed is not an integer.")
+        else:
+            self.randSeedVal = seed
+
 
     def get_comp_order(self):
         """Returns a list of all force components.
@@ -122,7 +143,7 @@ class DataFetcher(object):
         self.comp_order = comp_order
 
 
-    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0):
         """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
         Both the specified dataset and the test set are processed in the same manner.
 
@@ -164,15 +185,22 @@ class DataFetcher(object):
             If True, the force components are concatenated according to the order specified in 'comp_order'.
             Concatenation modifies the original data in order to provide a continuous signal.
 
+        val_setp : float
+            Contains the percentage of samples to include in the validation set.
+            This parameter is ignored for the TEST-set.
+
         ----------
         Returns:
         train : dictionary containing the keys 'label', 'affected' and 'non_affected'.
             'label': numpy array of integers containing the class labels (according to 'class_dict').
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
+            If 'val_setp' > 0:
+            'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
+            'non_affected_val' same as above but contains the validation set for the unaffected leg
             Contains only the data from the specified set.
 
-        test : dictinary, same format as above.
+        test : dictinary, same format as above, but never contains 'affected_val' nor 'non_affected_val'.
             Contains only the data from the test set.
         
         ----------
@@ -183,13 +211,13 @@ class DataFetcher(object):
         if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
 
-        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat)
-        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat)
+        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat, val_setp)
+        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat, val_setp=None)
 
         return train, test
 
 
-    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False):
+    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0):
         """Reads and preprocesses all 5 force components for the specified dataset.
 
         Parameters:
@@ -230,12 +258,18 @@ class DataFetcher(object):
             If True, the force components are concatenated according to the order specified in 'comp_order'.
             Concatenation modifies the original data in order to provide a continuous signal.
 
+        val_setp : float
+            Contains the percentage of samples to include in the validation set.
+
         ----------
         Returns:
         data : dictionary containing the keys 'label', 'affected' and 'non_affected'.
             'label': numpy array of integers containing the class labels (according to 'class_dict').
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
+            If 'val_setp' > 0:
+            'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
+            'non_affected_val' same as above but contains the validation set for the unaffected leg.
         
         ----------
         Raises:
@@ -281,7 +315,7 @@ class DataFetcher(object):
                 _assert_scale(leg, scaler)
 
         affected, non_affected = self.__arrange_data(left, right, metadata)
-        data = self.__split_and_format(affected, non_affected, metadata)
+        data = self.__split_and_format(affected, non_affected, metadata, val_setp)
         #TODO remove print
         print(data["affected"].shape)
 
@@ -406,12 +440,13 @@ class DataFetcher(object):
         return {"concat": concat_series}
 
 
-    def __split_and_format(self, affected, non_affected, metadata):
+    def __split_and_format(self, affected, non_affected, metadata, val_setp):
         """Splits the provided data into values and labels.
         Values are formatted into single-precision numpy-arrays.
         Labels are transformed into integers (specified in 'class_dict').
         If the input signals are concatenated the output is of shape num_samples x len_concat_series
         Otherwise it is of shape num_samples x len_series x 5
+        If 'val_set' is specified, the provided data is split into a training and validation set.
 
         Parameters:
         affected : dictionary containing all five force components, either concatenated or not.
@@ -420,17 +455,31 @@ class DataFetcher(object):
         non_affected : dictionary containing all five force components, either concatenated or not.
             The data for the unaffected side.
 
-        metadata: DataFrame
+        metadata : DataFrame
             Containing all the metadata information (e.g. the class label).
+
+        val_setp : float
+            Contains the percentage of samples to include in the validation set.
 
         ----------
         Returns:
-        data : dictionary containing the keys 'label', 'affected' and 'non_affected'
+        data : dictionary containing the keys 'label', 'affected' and 'non_affected' (plus 'affected_val' and 'non_affected_val' if 'val_set' is specified).
             Contains the labels (as integers) and the data for the affected/unaffected side (as float32).
+
+        ----------
+        Raises:
+        ValueError : If the percentage for the validation set is not within 0-1.
         """
 
-        label_info = metadata[["SESSION_ID", "CLASS_LABEL",]].set_index("SESSION_ID")
+        val_set = None
         keys = affected.keys()
+
+        if val_setp != None and val_setp != 0:
+            if val_setp < 0 or val_setp > 1:
+                raise ValueError("Please specify the validation set between 0 and 1 (Current: {}).".format(val_setp))
+            val_set = self.__get_indices_of_val_set(affected[list(keys)[0]], val_setp)
+
+        label_info = metadata[["SESSION_ID", "CLASS_LABEL",]].set_index("SESSION_ID")
         labels = affected[list(keys)[0]].join(label_info, on="SESSION_ID")["CLASS_LABEL"].map(self.class_dict)
         data = {"label": labels.values}
 
@@ -448,6 +497,23 @@ class DataFetcher(object):
             non_affected_formatted = np.asarray(list(non_affected_formatted.values()), dtype=np.float32)
             data["affected"] = np.moveaxis(affected_formatted, 0, -1)
             data["non_affected"] = np.moveaxis(non_affected_formatted, 0, -1)
+
+        # Extract the validation set
+        if val_set is not None:
+            data["affected_val"] = np.take(data["affected"], val_set, axis=0)
+            data["non_affected_val"] = np.take(data["non_affected"], val_set, axis=0)
+            data["label_val"] = np.take(data["label"], val_set, axis=0)
+            data["affected"] = np.delete(data["affected"], val_set, axis=0)
+            data["non_affected"] = np.delete(data["non_affected"], val_set, axis=0)
+            data["label"] = np.delete(data["label"], val_set, axis=0)
+
+            # testing purposes only - Verify that the train- and validation-set are mutally exclusive on SESSION_ID & SUBJECT_ID
+            for component in affected:
+                affected[component] =  affected[component].reset_index(drop=True)
+                val_test = affected[component].iloc[val_set]
+                train_test = affected[component].iloc[~affected[component].index.isin(val_set)]
+                assert not val_test["SESSION_ID"].isin(train_test["SESSION_ID"]).any(), "Something went wrong during the selection of the validation set."
+                assert not val_test["SUBJECT_ID"].isin(train_test["SUBJECT_ID"]).any(), "Something went wrong during the selection of the validation set."
 
         return data
 
@@ -542,9 +608,46 @@ class DataFetcher(object):
         return data["LEFT_AFFECTED"].values
 
 
+    def __get_indices_of_val_set(self, dataset, val_setp):
+        """Randomly samples the dataset until the number of samples included in the validation set is greater than total_samples * val_setp.
+        If a person is determined to be part of the validation set, all corresponding samples have to be part of the validation set.
+        Therefore it is only guaranteed that the validation set contains at least the specified number of samples.
+        Samples are determined randomly using 'randSeedVal' as the seed for the random number generator.
+
+        Parameters:
+        dataset : DataFrame
+            Containing the complete data of the set for which to determine the validation set.
+            (I.e. only the data for one force component or the concatenated series).
+
+        val_setp :  float
+            The percentage of the total samples to be included in the validation set
+
+        ----------
+        Returns:
+        indices : ndarray (int)
+            Numpy array containing the indices of the samples to be indluded in the validation set.
+        """
+
+        # Guarantee at least val_setp samples
+        num_val = math.ceil(dataset.shape[0]*val_setp)
+        randGen = np.random.RandomState(seed=self.randSeedVal)
+        val_set_ids = dataset.sample(n=1, frac=None, random_state=randGen, axis=0)["SUBJECT_ID"].values
+        indices = np.where(dataset["SUBJECT_ID"].values == val_set_ids)
+
+        while len(indices) < num_val:
+            randSample = dataset.sample(n=1, frac=None, random_state=randGen, axis=0)["SUBJECT_ID"].values
+            # re-draw in case the sample has been selected previously
+            while np.isin(randSample, val_set_ids).any():
+                randSample = dataset.sample(n=1, frac=None, random_state=randGen, axis=0)["SUBJECT_ID"].values
+            indices = np.append(indices, np.where(dataset["SUBJECT_ID"].values == randSample))
+            val_set_ids = np.append(val_set_ids, randSample)
+        
+        return indices
 
 
-            
+
+
+
 def _select_initial_measurements(metadata):
     """Selects and returns only the inital measurements from the dataset.
 
@@ -938,6 +1041,7 @@ def _get_data_part(data):
 
     # only existing columns are dropped
     return data.drop(columns=["SUBJECT_ID", "SESSION_ID", "TRIAL_ID"], errors="ignore")   
+
 
 def _assert_scale(concat_data, scaler):
     """Verifies whether the concatenated signal is still within the value range given by the MinMax-Scaler.
