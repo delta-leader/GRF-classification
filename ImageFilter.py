@@ -42,7 +42,7 @@ class ImageFilter(object):
         self.__set_kernel_size(kernel_size)
         self.sigma = sigma
         self.__set_output_size(output_size)
-
+        
 
     def apply(self, img):
         """Applies the filter to the provided image and returns the result.
@@ -110,42 +110,26 @@ class ImageFilter(object):
 
         ----------
         Raises:
-        ValueError : If a tupel is specified that does not have shape (2).
-        ValueError : If the provided values are not Integers.
-        ValueError : If any of the values in 'kernel_shape' are 0 or negative.
+        ValueError : If a tupel is specified that does not have shape (2) or any of the values are 0 or negative.
+        TypeError : If the provided values are not Integers.
         """
 
         if isinstance(kernel_size, int):
-            if kernel_size < 1:
-                raise ValueError("Kernel shape has to be a positive integer > 0.")
-            if self.filterType == "median":
-                self.kernel_size = kernel_size
-            else:
-                self.kernel_size = (kernel_size, kernel_size)
+            kernel_size = (kernel_size, kernel_size)
 
-        elif isinstance (kernel_size, tuple):
-            if len(kernel_size) != 2:
-                raise ValueError("Expected tupel of shape (2) but found tupel of shape ({}) as 'kernel_size'.".format(len(kernel_size)))
-            for item in kernel_size:
-                if not isinstance(item, int):
-                    raise ValueError("Provided values for 'kernel_size' are not of type 'int'")
-                if item < 1 :
-                    raise ValueError("Kernel shape has to be a positive integer > 0.")
+        _check_size(kernel_size)
 
-            if self.filterType == "median":
-                self.kernel_size = kernel_size[0]
-            else:
-                self.kernel_size = kernel_size
-        
+        if self.filterType == "median":
+            self.kernel_size = kernel_size[0]
         else:
-            raise ValueError("Provided values are not of type 'int'")
+            self.kernel_size = kernel_size
 
 
     def __set_output_size(self, output_size):
         """Verifies that the specified output dimensions are valid (e.g. non negativ) and sets the value accordingly.
 
         Parameters:
-        output_size : int Ttupel of shape (2):
+        output_size : int tupel of shape (2):
         The desired size of the output. An averaging approach is used for resizing.
 
         ----------
@@ -158,14 +142,29 @@ class ImageFilter(object):
             self.output_size = None
             return
 
-        if not isinstance (output_size, tuple):
-            raise ValueError("Invalid type of parameter 'output_size'. Expected a tuple of integer of shape (2).")
-        if len(output_size) != 2:
-            raise ValueError("Expected tupel of shape (2) but found tupel of shape ({}) as 'output_size'.".format(len(output_size)))
-        for item in output_size:
-            if not isinstance(item, int):
-                raise ValueError("Provided values for 'output_size' are not of type 'int'")
-            if item < 1 :
-                raise ValueError("Output shape has to be a positive integer > 0.")
-
+        _check_size(output_size)
         self.output_size = output_size
+
+
+def _check_size(size_tuple):
+    """Verifies that the specified tupel represents a valid size for a 2-dimensional array.
+    I.e. it has 2 dimensions, and only integer values greater than 0.
+
+    Parameters:
+    size_tupel: int tuple of shape(2)
+
+    ----------
+    ValueError : If the tuple is not 2 dimensional or any of the values is 0 or negative.
+    TypeError : If the provided value is not a tuple or its individual elements are not Integers.
+    """
+
+    if not isinstance (size_tuple, tuple):
+        raise TypeError("Invalid type expected a tuple for one of the sizes.")
+        
+    if len(size_tuple) != 2:
+        raise ValueError("Expected tuple of shape (2) but found tuple of shape ({}).".format(len(size_tuple)))
+    for item in size_tuple:
+        if not isinstance(item, int):
+            raise TypeError("Provided values for one of the sizes are not of type 'int'")
+        if item < 1 :
+            raise ValueError("Sizes have to be a positive integer > 0.")

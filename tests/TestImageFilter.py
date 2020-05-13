@@ -31,6 +31,11 @@ class TestScaler(unittest.TestCase):
         assert imgFilter.filterType == "resize", "Filter type was not set correctly."
         assert imgFilter.output_size == (1,1), "Output-size was not set correctly."
         assert imgFilter.kernel_size == (5,5), "Incorrect inital kernel-size."
+        imgFilter = ImageFilter("avg", 7, 2, (2,2))
+        assert imgFilter.kernel_size == (7,7), "Kernel-size was not set correcly."
+        assert imgFilter.filterType == "avg", "Filter type was not set correctly."
+        assert imgFilter.sigma == 2, "Sigma was not set correctly."
+        assert imgFilter.output_size == (2,2), "Output-size was not set correctly."
 
 
         # verify exception handling
@@ -38,16 +43,25 @@ class TestScaler(unittest.TestCase):
             ImageFilter("test")
             ImageFilter(filterType=5)
             ImageFilter(filterType=None)
-            ImageFilter(kernel_size="test")
-            ImageFilter(kernel_size=0.5)
             ImageFilter(kernel_size=(10))
             ImageFilter(kernel_size=(1, 1, 1))
-            ImageFilter(kernel_size=(1, 0.5))
             ImageFilter(kernel_size=(0, 1))
+            ImageFilter(kernel_size=0)
             ImageFilter(output_size=(1, -1))
             ImageFilter(output_size=(1, 1, 2))
             ImageFilter(output_size=5)
+            ImageFilter(output_size=(7))
+            
+
+        with self.assertRaises(TypeError):
+            ImageFilter(kernel_size="test")
+            ImageFilter(kernel_size=0.5)
+            ImageFilter(kernel_size=("a", 2))
+            ImageFilter(kernel_size=(1, 0.5))
             ImageFilter(output_size=True)
+            ImageFilter(output_size=(3.8, 4))
+            ImageFilter(output_size=(10, False))
+            ImageFilter(output_size=[10, 10])
 
     
     def test_apply(self):
