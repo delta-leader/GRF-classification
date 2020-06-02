@@ -87,7 +87,7 @@ class ImageFilter(object):
 
         Parameters:
         filterType : string
-        Specifies the type of the filter. Must be one of 'availableFilters'
+            Specifies the type of the filter. Must be one of 'availableFilters'
 
         ----------
         Raises:
@@ -105,8 +105,8 @@ class ImageFilter(object):
         """Verifies that the specified kernel dimensions are valid (e.g. non negativ) and sets the value accordingly.
 
         Parameters:
-        kernel_size : int or int Tupel of shape (2):
-        The size of the kernel. If only one number is provided, a quadratic kernel is applied.
+        kernel_size : int or int Tupel of shape (2)
+            The size of the kernel. If only one number is provided, a quadratic kernel is applied.
 
         ----------
         Raises:
@@ -130,7 +130,7 @@ class ImageFilter(object):
 
         Parameters:
         output_size : int tupel of shape (2):
-        The desired size of the output. An averaging approach is used for resizing.
+            The desired size of the output. An averaging approach is used for resizing.
 
         ----------
         Raises:

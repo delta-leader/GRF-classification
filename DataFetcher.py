@@ -196,8 +196,9 @@ class DataFetcher(object):
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
             If 'val_setp' > 0:
-            'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
-            'non_affected_val' same as above but contains the validation set for the unaffected leg
+            'affected_val': numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
+            'non_affected_val': same as above but contains the validation set for the unaffected leg.
+            'label_val': numpy array of integers containing the class labels for the validation set.
             Contains only the data from the specified set.
 
         test : dictinary, same format as above, but never contains 'affected_val' nor 'non_affected_val'.
@@ -270,6 +271,7 @@ class DataFetcher(object):
             If 'val_setp' > 0:
             'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
             'non_affected_val' same as above but contains the validation set for the unaffected leg.
+            'label_val': numpy array of integers containing the class labels for the validation set.
         
         ----------
         Raises:
