@@ -444,7 +444,7 @@ def _convert_on_cpu(func, data, conversions, conv_args, imgFilter):
     for image in conversions:
         if image == "gaf":
             min_value = np.min(data)
-            max_value = np.min(data)
+            max_value = np.max(data)
             if min_value < -1:
                 raise ValueError("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
             if max_value > 1:
@@ -647,7 +647,7 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
         if image == "gaf":
             data = cp.asarray(data)
             min_value = cp.min(data)
-            max_value = cp.min(data)
+            max_value = cp.max(data)
             if min_value < -1:
                 raise ValueError("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
             if max_value > 1:
