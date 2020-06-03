@@ -773,6 +773,7 @@ def _read_and_select(filename, metadata, assertLength):
                      or the length of one sample != 104 and assertLength = True.
     """
 
+    #TODO maybe change to float32?
     data = pd.read_csv(filename, header=0, dtype="float64")
     data["SESSION_ID"] = data["SESSION_ID"].astype("int64")
     data["SUBJECT_ID"] = data["SUBJECT_ID"].astype("int64")

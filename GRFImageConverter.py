@@ -150,51 +150,9 @@ class GRFImageConverter(object):
             if not isinstance(imgFilter, ImageFilter):
                 raise TypeError("Invalid value for 'imgFilter'. Please make sure that it is of type 'ImageFilter'.")
 
-        
-        #TODO change to actual implementation
-        #return self.__convert_per_key(data_dict, ["gaf"], None, imgFilter)
         return self.__convert_per_key(data_dict, conversions, conv_args, imgFilter)
     
-    """
-    def convert_to_GAF(self, data_dict, image="BOTH", imgFilter=None):
-        #TODO change function description
-        Converts the provided data into Gramian Angular Field (GAF) images.
-
-        Parameters:
-        data : TODO 3-dimensional ndarray of shape num_samples x time_steps x channels.
-            Contains the data to be converted. Each channel is converted independently of the others.
-
-        image : TODO Removed because they can be efficiently computed in one go
-            Specifies with version of GAF to create (Gramian Angular Summation Field or Gramian Angular Difference field).
-            If 'BOTH' is specified, both versions are created.
-
-        imgFilter: ImageFilter
-            A blur filter to be applied to each converted image before the final output.
-
-        ----------
-        Returns:
-        conv_data : dicitonary containing the same keys as the input (except "label").
-            Each entry consits of another dictionary containing at least one of the following keys (depending on the value specefied by 'image'):
-            'gasf': ndarray of shape num_samples x time_steps x time_steps x channels
-                    Containing the GASF conversion of the data.
-            'gadf': ndarray of shape num_samples x time_steps x time_steps x channels
-                    Containing the GADF conversion of the data.
-
-        ----------
-        Raises:
-        TypeError: if 'image' is not a string.
-
-        ValueError : If one of the arrays containing GRF-data is not 3-dimensional.
-        
-        
-        return self.__convert_per_key(data_dict, ["gaf"], None, imgFilter)
-        #if self.useGpu:
-        #    return _check_keys_and_apply(_convert_to_GAF_GPU, data, imgFilter)
-        #else:
-        #    return _check_keys_and_apply(_convert_to_GAF_CPU, data, imgFilter)
-        """
-
-
+  
     def __convert_per_key(self, data_dict, conversions, conv_args, imgFilter):
         """Calls the image conversion for each subset of the data corresponding to a key used in the 'data_dict' to store GRF-data.
         Additionally verifies the dimensions of each corresponding dataset.
@@ -388,8 +346,9 @@ def _get_mtf_args(conv_args):
     ----------
     Raises:
     TypeError : If 'conv_args' is not a dictionary.
-    ValueError : If the key 'range' does not exist within the conversion arguments.
     TypeError : It 'range' is not a tuple.
+    TypeError : If 'num_bins' is not an integer.
+    ValueError : If the key 'range' does not exist within the conversion arguments.
     ValueError : If 'range' is not of shape (2).
     ValueError : if the specified range does not fulfill min < max.
     """    
@@ -399,9 +358,12 @@ def _get_mtf_args(conv_args):
 
     num_bins = 32
     if "num_bins" not in conv_args.keys():
-        warnings.warn("Number of bins was not specified for MTF conversion. Will default to{}".format(num_bins))
+        warnings.warn("Number of bins was not specified for MTF conversion. Will default to {}".format(num_bins))
     else:
-        num_bins = conv_args["num_bins"]
+        if isinstance(num_bins, int):
+            num_bins = conv_args["num_bins"]
+        else:
+            raise TypeError("Number of bins needs to be specified as an integer.")
     
     if "range" not in conv_args.keys():
         raise ValueError("Please specify 'range' (tuple of  form (min, max)) as a conversion argument for MTF.")
@@ -416,6 +378,26 @@ def _get_mtf_args(conv_args):
             raise ValueError("The specified range does not fullfill min < max ({} < {}).".format(range_min, range_max))
 
     raise TypeError("The argument 'range' is not specified as a tuple.")
+
+
+def _check_range_mtf(mtf_range, data_range):
+    """Verifies whether the supplied data range is within the specified range for the MTF conversion.
+    Prints a warning if the data_range is bigger than the MTF-range.
+
+    ----------
+    Parameters:
+    mtf_range : tuple of form (min, max)
+        The range specified for the mtf-conversion.
+
+    data_range : tuple of form (min, max)
+        The actual range within the data.
+    """
+
+    if mtf_range[0] > data_range[0]:
+        warnings.warn("The actual data range is larger then the specified one. Specified range is {}, data range is {}".format(mtf_range, data_range))
+
+    if mtf_range[1] < data_range[1]:
+        warnings.warn("The actual data range is larger then the specified one. Specified range is {}, data range is {}".format(mtf_range, data_range))
 
 
 def _convert_on_cpu(func, data, conversions, conv_args, imgFilter):
@@ -474,6 +456,7 @@ def _convert_on_cpu(func, data, conversions, conv_args, imgFilter):
 
         elif image == "mtf":
             num_bins, range_min, range_max = _get_mtf_args(conv_args)
+            _check_range_mtf((range_min, range_max), (np.min(data), np.max(data)))
             quantile_borders = np.linspace(range_min, range_max, num_bins, endpoint=False)[1:]
             converted_data["mtf"] = func(_calc_mtf, axis=2, arr=data, imgFilter=imgFilter, args=[quantile_borders])
 
@@ -673,6 +656,7 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
 
         elif image == "mtf":
             num_bins, range_min, range_max = _get_mtf_args(conv_args)
+            _check_range_mtf((range_min, range_max), (np.min(data), np.max(data)))
             quantile_borders = np.linspace(range_min, range_max, num_bins, endpoint=False)[1:]
             converted_data["mtf"] = _convert_to_mtf_gpu(data, imgFilter, quantile_borders)
 
@@ -830,7 +814,7 @@ def _apply_filter(img, imgFilter):
 
 
 
-
+"""
 fetcher = DataFetcher("/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC")
 converter = GRFImageConverter()
 scaler = GRFScaler()
@@ -853,7 +837,7 @@ image_gpu = converter.convert(data, conversions="mtf", conv_args=args)
 #plotter = GRFPlotter()
 #plotter.plot_image(image, keys="affected")
 #plotter.plot_image(image_gpu, keys="affected")
-
+"""
 """
 blur = ImageFilter("resize", (10,10), output_size=(50,50))
 blur_image = converter.convert(test, imgFilter=blur)

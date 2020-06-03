@@ -28,8 +28,11 @@ class TestScaler(unittest.TestCase):
         # verify exception handling
         with self.assertRaises(ValueError):
             scaler = GRFScaler(scalertype="")
+        with self.assertRaises(ValueError):
             scaler = GRFScaler(scalertype="test")
+        with self.assertRaises(ValueError):
             scaler = GRFScaler(featureRange=(0,0))
+        with self.assertRaises(ValueError):
             scaler = GRFScaler(featureRange=(1,0))
 
 

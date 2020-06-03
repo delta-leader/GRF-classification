@@ -2,6 +2,7 @@ import os.path, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 
 import unittest
+import warnings
 import numpy as np
 import pandas as pd
 from DataFetcher import DataFetcher
@@ -53,16 +54,17 @@ class TestImageConverter(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             converter.set_parallel_threshold(None)
-            converter.set_parallel_threshold(True)
+        with self.assertRaises(TypeError):
             converter.set_parallel_threshold(8.5)
+        with self.assertRaises(TypeError):
             converter.set_parallel_threshold("AB")
 
 
 
     def test_conversions(self):
         self.__assert_gaf_conversion()
-        self.__assert_mtf_conversion()
-        self.__assert_filtering()        
+        #self.__assert_mtf_conversion()
+        #self.__assert_filtering()        
 
 
 
@@ -144,7 +146,26 @@ class TestImageConverter(unittest.TestCase):
         assert np.allclose(image_cpu["affected"]["gadf"], image_gpu["affected"]["gadf"], rtol=1e-05, atol=1e-06), "Output differs between CPU and GPU (GADF)."
         assert np.allclose(image_cpu["non_affected"]["gasf"], image_gpu["non_affected"]["gasf"], rtol=1e-05, atol=1e-06), "Output differs between CPU and GPU (GASF)."
         assert np.allclose(image_cpu["non_affected"]["gadf"], image_gpu["non_affected"]["gadf"], rtol=1e-05, atol=1e-06), "Output differs between CPU and GPU (GADF)."
-        #TODO add range exception check
+        
+
+        # verify exceptions
+        test_data["affected"][1, 4, 3] = -5
+        converter.disableGpu()
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="gaf")
+        converter.enableGpu()
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="gaf")
+
+        test_data["affected"][1, 4, 3] = 0
+        test_data["affected"][8, 9, 1] = 2
+        with self.assertWarns(UserWarning):
+            converter.convert(test_data, conversions="gaf")
+        converter.disableGpu()
+        with self.assertWarns(UserWarning):
+            converter.convert(test_data, conversions="gaf")
+
+
 
 
 
@@ -192,7 +213,7 @@ class TestImageConverter(unittest.TestCase):
             #assert np.allclose(test_data[key], np.swapaxes(ver_data[key], 1, 2), rtol=1e-05, atol=1e-07), "Original data does not correspond to the fetched one."
 
         conv_args = {
-            "num_bins": 8,
+            "num_bins": 32,
             "range": (-1, 1)
         }
 
@@ -233,6 +254,59 @@ class TestImageConverter(unittest.TestCase):
         assert np.allclose(image_cpu["affected"]["mtf"], image_gpu["affected"]["mtf"]), "Output differs between CPU and GPU (MTF)."
         assert np.allclose(image_cpu["non_affected"]["mtf"], image_gpu["non_affected"]["mtf"]), "Output differs between CPU and GPU (MTF)."
         assert np.allclose(image_cpu["non_affected"]["mtf"], image_gpu["non_affected"]["mtf"]), "Output differs between CPU and GPU (MTF)."
+
+
+        # verify exeptions
+        converter.disableGpu()
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args=92)
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args=["d", "ab"])
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": None})
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": None, "range": (0,1)})
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": 4.8, "range": (0,1)})
+        converter.enableGpu()
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args=None)
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args=False)
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": [3, 4]})
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": 7})
+        with self.assertRaises(TypeError):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": "a", "range": (0,1)})
+
+        converter.disableGpu()
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": (5,)})
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": (5, 5, 5)})
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": ()})
+        converter.enableGpu()
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": 5})
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": (7, 3)})
+        with self.assertRaises(ValueError):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": (5, 5)})
+        
+        with self.assertWarns(UserWarning):
+            converter.convert(test_data, conversions="mtf", conv_args={"range": (-1, 1)})
+        
+        test_data["affected"][0, 0, 0] = -5
+        with self.assertWarns(UserWarning):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": 5, "range": (-1, 1)})
+        test_data["affected"][0, 0, 0] = 0
+        test_data["affected"][4, 8, 3] = 2
+        with self.assertWarns(UserWarning):
+            converter.convert(test_data, conversions="mtf", conv_args={"num_bins": 5, "range": (-1, 1)})
+            
+
         
 
 

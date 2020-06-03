@@ -26,7 +26,9 @@ class TestFetcher(unittest.TestCase):
         DataFetcher(filepath + "/")
         with self.assertRaises(IOError):
             DataFetcher(filepath + "/test")
+        with self.assertRaises(IOError):
             DataFetcher("/test")
+        with self.assertRaises(IOError):
             DataFetcher("")
 
     def test_fetch(self):
@@ -170,11 +172,17 @@ class TestFetcher(unittest.TestCase):
         # Verify exceptions
         with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics="", dataset="TRAIN_BALANCED")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics=None, dataset="TRAIN_BALANCED")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics="TEST", dataset="TRAIN_BALANCED")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset="TEST_BALANCED")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset="")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(onlyInitial=True, dropOrthopedics="None", dataset=None)
+        with self.assertRaises(ValueError):
             fetcher.fetch_data(onlyInitial=True, dropOrthopedics="All", dataset="TEST")
 
         
@@ -395,8 +403,11 @@ class TestFetcher(unittest.TestCase):
         # Verify exceptions
         with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=True, stepsize=0)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=True, stepsize=222)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, stepsize=-3)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, stepsize=101)
 
         with self.assertRaises(TypeError):
@@ -547,7 +558,9 @@ class TestFetcher(unittest.TestCase):
         # Verify exceptions
         with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler="TEST")
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=55)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=StandardScaler())
 
 
@@ -688,10 +701,15 @@ class TestFetcher(unittest.TestCase):
         # Verify exception
         with self.assertRaises(TypeError):
             fetcher.set_randSeet("")
+        with self.assertRaises(TypeError):
             fetcher.set_randSeet("test")
+        with self.assertRaises(TypeError):
             fetcher.set_randSeet(None)
+        with self.assertRaises(TypeError):
             fetcher.set_randSeet('A')
+        with self.assertRaises(TypeError):
             fetcher.set_randSeet(True)
+        with self.assertRaises(TypeError):
             fetcher.set_randSeet(0.5)
 
 
@@ -734,19 +752,30 @@ class TestFetcher(unittest.TestCase):
         # Verify exceptions
         with self.assertRaises(TypeError):
             fetcher.set_comp_order(None)
+        with self.assertRaises(TypeError):
             fetcher.set_comp_order("")
+        with self.assertRaises(TypeError):
             fetcher.set_comp_order(45)
+        with self.assertRaises(TypeError):
             fetcher.set_comp_order("B")
 
         with self.assertRaises(ValueError):
             fetcher.set_comp_order(["a", "b"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["a", "b", "c", "d", "e"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["a", "b", "c", "d", "e", "f"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "cop_ml", "f_v", "f_ap", "f_ml", "f_v"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "cop_ml", "f_v", "f_ap", "f_ml", "cop_ap"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "cop_ml", "f_v", "f_ap"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "f_v", "f_ap", "f_ml"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "cop_ml", "f_v", "f_ap", "f_ap"])
+        with self.assertRaises(ValueError):
             fetcher.set_comp_order(["cop_ap", "cop_ap", "f_v", "f_ap", "f_ml"])
 
 
@@ -782,10 +811,15 @@ class TestFetcher(unittest.TestCase):
         #Verify exceptions
         with self.assertRaises(TypeError):
             fetcher.set_randSeetVal(None)
+        with self.assertRaises(TypeError):
             fetcher.set_randSeetVal(True)
+        with self.assertRaises(TypeError):
             fetcher.set_randSeetVal("43")
+        with self.assertRaises(TypeError):
             fetcher.set_randSeetVal("test")
+        with self.assertRaises(TypeError):
             fetcher.set_randSeetVal(-0.1)
+        with self.assertRaises(TypeError):
             fetcher.set_randSeetVal(0.54)
 
 
@@ -827,9 +861,13 @@ class TestFetcher(unittest.TestCase):
         # Verify exceptions
         with self.assertRaises(ValueError):
             fetcher.fetch_set(val_setp=-1)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=True, val_setp=1.1)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=True, dataset="TRAIN", averageTrials=False, concat=True, val_setp=5)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(val_setp=True)
+        with self.assertRaises(ValueError):
             fetcher.fetch_set(val_setp="9")
 
     
