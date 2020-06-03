@@ -660,7 +660,7 @@ class TestFetcher(unittest.TestCase):
 
 
         # Verify that a different seed changes the outcome
-        fetcher.set_randSeet(0)
+        fetcher.set_randSeed(0)
 
         # SESSION_IDs where the left side is affected (with randSeed=0)
         leftSideAffected = [1166, 19749, 20264, 1090, 30882]
@@ -700,17 +700,15 @@ class TestFetcher(unittest.TestCase):
 
         # Verify exception
         with self.assertRaises(TypeError):
-            fetcher.set_randSeet("")
+            fetcher.set_randSeed("")
         with self.assertRaises(TypeError):
-            fetcher.set_randSeet("test")
+            fetcher.set_randSeed("test")
         with self.assertRaises(TypeError):
-            fetcher.set_randSeet(None)
+            fetcher.set_randSeed(None)
         with self.assertRaises(TypeError):
-            fetcher.set_randSeet('A')
+            fetcher.set_randSeed('A')
         with self.assertRaises(TypeError):
-            fetcher.set_randSeet(True)
-        with self.assertRaises(TypeError):
-            fetcher.set_randSeet(0.5)
+            fetcher.set_randSeed(0.5)
 
 
 
@@ -804,23 +802,21 @@ class TestFetcher(unittest.TestCase):
         assert np.array_equal(train["affected_val"], train2["affected_val"]), "The random number generator was not reset between calls to 'fetch()'"
 
         # Verify that set_randSeeVal() works as intended
-        fetcher.set_randSeetVal(1024)
+        fetcher.set_randSeedVal(1024)
         train2 = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, val_setp=0.5)
         assert not np.allclose(train["affected_val"][0, : , 0], train2["affected_val"][0, : , 0]), "Changing the sedd of the random number generator did not work properly."
 
         #Verify exceptions
         with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal(None)
+            fetcher.set_randSeedVal(None)
         with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal(True)
+            fetcher.set_randSeedVal("43")
         with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal("43")
+            fetcher.set_randSeedVal("test")
         with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal("test")
+            fetcher.set_randSeedVal(-0.1)
         with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal(-0.1)
-        with self.assertRaises(TypeError):
-            fetcher.set_randSeetVal(0.54)
+            fetcher.set_randSeedVal(0.54)
 
 
         # Verify that only the training-set is split
@@ -865,9 +861,7 @@ class TestFetcher(unittest.TestCase):
             fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=True, val_setp=1.1)
         with self.assertRaises(ValueError):
             fetcher.fetch_set(raw=True, dataset="TRAIN", averageTrials=False, concat=True, val_setp=5)
-        with self.assertRaises(ValueError):
-            fetcher.fetch_set(val_setp=True)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             fetcher.fetch_set(val_setp="9")
 
     

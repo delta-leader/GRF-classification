@@ -3,6 +3,7 @@ import numpy as np
 import cupy as cp
 import multiprocessing as mp
 from ImageFilter import ImageFilter
+from scipy.spatial.distance import pdist
 
 #testing purposes only
 from DataFetcher import DataFetcher
@@ -360,7 +361,7 @@ def _get_mtf_args(conv_args):
     if "num_bins" not in conv_args.keys():
         warnings.warn("Number of bins was not specified for MTF conversion. Will default to {}".format(num_bins))
     else:
-        if isinstance(num_bins, int):
+        if isinstance(conv_args["num_bins"], int):
             num_bins = conv_args["num_bins"]
         else:
             raise TypeError("Number of bins needs to be specified as an integer.")
@@ -378,6 +379,92 @@ def _get_mtf_args(conv_args):
             raise ValueError("The specified range does not fullfill min < max ({} < {}).".format(range_min, range_max))
 
     raise TypeError("The argument 'range' is not specified as a tuple.")
+
+
+def _get_rcp_args(conv_args, signal_size, useGpu):
+    """Extracts the conversion arguments used for the RCP conversion from the dictionary.
+
+    Parameters:
+    conv_args : dict
+        Contains the conversion arguments. The following keys are use for MTF conversion:
+        'dims' : int
+            The number of embedding dimensions
+        'delay' : int
+            The time-delay used.
+        'metric' str
+            The distance metric used.
+
+    signal_size : int
+        The length of a single signal.
+
+    useGpu : boolean
+        Whether or not the conversion should be done on the GPU.
+
+    ----------
+    Returns:
+    dims : int
+        The number of embedding dimensions.
+
+    range_min : int
+        The time-delay.
+
+    range_max : str
+        The distance metric to be used (encoded as string).
+
+    ----------
+    Raises:
+    TypeError : If 'conv_args' is not a dictionary.
+    TypeError : It 'dims' is not an integer.
+    TypeError : If 'delay' is not an integer.
+    TypeError : If 'metric' is not a string.
+    ValueError : If the number of embedding dimensions is equal to or exceeds the size of the signal (dims >= signal_size).
+    ValueError : If the time-delay equal to or exceeds half the size of the signal (dims >= signal_size/2).
+    ValueError : If 'metric' is not a valid value to be used for the conversion. Valid values are:
+                 - CPU: All metrics accepted by scipy.spatial.distance.pdist()
+                 - GPU: 'euclidean'
+    """  
+
+    if not isinstance(conv_args, dict):
+        raise TypeError("Please specify the conversion arguments as a dictionary.")
+
+    dims = 4
+    if "dims" not in conv_args.keys():
+        warnings.warn("The number of embedding dimensions was not specified for RCP conversion. Will default to {}".format(dims))
+    else:
+        if isinstance(conv_args["dims"], int):
+            dims = conv_args["dims"]
+        else:
+            raise TypeError("The embedding dimensions has to be specified as an integer."
+    )
+    if dims >= signal_size:
+        raise ValueError("The number of embedding dimensions is equal to or exceeds the size of the signal {} vs {}.".format(dims, signal_size))
+
+    delay = 2
+    if "delay" not in conv_args.keys():
+        warnings.warn("The time-delay was not specified for RCP conversion. Will default to {}".format(delay))
+    else:
+        if isinstance(conv_args["delay"], int):
+            dims = conv_args["delay"]
+        else:
+            raise TypeError("The time-delay has to be specified as an integer."
+    )
+    if delay >= signal_size/2:
+        raise ValueError("The time delay is too large  {} >= {}/2.".format(dims, signal_size))
+
+    metric = "euclidean"
+    if "metric" not in conv_args.keys():
+        warnings.warn("The metric for the distance calculations in the RCP conversion was not specified. Will default to '{}'".format(delay))
+    if not isinstance(conv_args["metric"], str):
+        raise TypeError("The distance metric has to be specified as a string")
+    if useGpu:
+        if metric not in ["euclidean"]:
+            raise ValueError("Only euclidean distance metric is supported on the GPU.")
+    else:
+        valid_metrics = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean", "hamming", "jaccard", "jensenshannon", "kulsinski", "mahalanobis", "matching", "minkowski", "rogerstanimoto", "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean", "yule"]
+        if metric not in valid_metrics:
+            raise ValueError("The specified metric ('{}') is not a valid metric to be used with 'scipy.spatial.distance.pdist()".format(metric))
+
+    return dims, delay, metric
 
 
 def _check_range_mtf(mtf_range, data_range):
@@ -461,7 +548,9 @@ def _convert_on_cpu(func, data, conversions, conv_args, imgFilter):
             converted_data["mtf"] = func(_calc_mtf, axis=2, arr=data, imgFilter=imgFilter, args=[quantile_borders])
 
         elif image == "rcp":
-            print("RCP not yet implemented")
+            dims, delay, metric = _get_rcp_args(conv_args, data.shape[2], False)
+            converted_data["rcp"] = func(_calc_rcp, axis=2, arr=data, imgFilter=imgFilter, args=[dims, delay, metric])
+
         else:
             raise ValueError("No conversion defined for '{}'. Has to be one of 'gaf'/'mtf'/'rcp'.".format(image))
 
@@ -544,7 +633,7 @@ def _calc_gafs(signal, imgFilter, args):
     Returns:
     gafs : 3-dimensional ndarray of shape signal_size x signal_size x 2
         The last dimension conains the actual GASF(0) and GADF(1) values.
-        If an 'imgFilter' is passed, this filter is applied to each image.
+        If an 'imgFilter' is passed, this filter is applied to each image and the shape might change.
     """
     
     # because of precision errors, values can be slightly bigger than 1 which would lead to problems with arccos
@@ -584,7 +673,7 @@ def _calc_mtf(signal, imgFilter, args):
     Returns:
     mtf : 1-dimensional ndarray of shape signal_size x signal_size
         Contains the corresponding MTF-image to the input signal.
-        If an 'imgFilter' is passed, this filter is applied to the image.
+        If an 'imgFilter' is passed, this filter is applied to the image and the shape might change.
     """
 
     quantile_borders = args[0]
@@ -606,6 +695,57 @@ def _calc_mtf(signal, imgFilter, args):
             mtf[i, j] = adj_mat[bin_assignment[i], bin_assignment[j]]
 
     return _apply_filter(mtf, imgFilter)
+
+
+def _calc_rcp(signal, imgFilter, args):
+    """Calculates the Recurrence Plot (RCP) of the provided signal. 
+
+    Parameters:
+    signal : 1-dimensional ndarray
+        Contains the time-series to be converted.
+
+    imgFilter : imageFilter
+        A filter to be applied to the converted images.
+        If None, the raw images are returned.
+
+    args : list of arguments for the computation
+        Must contain the embedding dimensions as the first value and
+        the time-delay as the second value.
+        The third value encodes the metric used for distance calculations.
+        Refer to 'docs.scipy.org' for a list of possible values.
+
+    ----------
+    Returns:
+    rcp : 1-dimensional ndarray of shape num_states x num_states
+        The dimension num_states is defined by num_states = signal_size - (dims-1) * delay
+        Contains the corresponding MTF-image to the input signal.
+        If an 'imgFilter' is passed, this filter is applied to the image and the shape might change.
+    """
+
+    dims = args[0]
+    delay = args[1]
+    metric = args[2]
+    num_states = signal.shape[0] - (dims-1) * delay
+
+    # creating an array where each row corresponds to a single state (8 is the number of bytes for a float32 value)
+    states = np.lib.stride_tricks.as_strided(signal, (num_states, dims), (8, dims*8))
+
+    # using scipy to compute pairwise distances
+    distances = pdist(states, metric=metric)
+
+    # distances are stored in a triangular fashion
+    # get indices of upper triangle
+    upper_indices = np.triu_indices(distances, 1)
+    # get indices of lower triangle
+    lower_indices = np.trilu_indices(distances, 1)
+
+    rcp = np.zeros(num_states, num_states)
+
+    # fill with values
+    rcp[upper_indices] = distances
+    rcp[lower_indices] = distances
+
+    return _apply_filter(rcp, imgFilter)
 
 
 def _convert_on_gpu(data, conversions, conv_args, imgFilter):
@@ -641,7 +781,6 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
          If an 'imgFilter' is passed, the filter is applied to each image within the data.
     """
 
-    #data = cp.asarray(data)
     converted_data = {}
     for image in conversions:
         if image == "gaf":
@@ -661,7 +800,8 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
             converted_data["mtf"] = _convert_to_mtf_gpu(data, imgFilter, quantile_borders)
 
         elif image == "rcp":
-            print("RCP not yet implemented")
+            dims, delay, _ = _get_rcp_args(conv_args, data.shape[2], True)
+            converted_data = _convert_to_rcp_gpu(cp.asarray(data), imgFilter, dims, delay)
 
         else:
             raise ValueError("No conversion defined for '{}'. Has to be one of 'gaf'/'mtf'/'rcp'.".format(image))
@@ -789,6 +929,61 @@ def _convert_to_mtf_gpu(data, imgFilter, quantile_borders):
         mtf_samples.append(mtf_channels)
 
     return np.array(mtf_samples)
+
+
+def _convert_to_rcp_gpu(data, imgFilter, dims, delay):
+    """Converts the provided data into Recurrence Plots (RCP) images using the GPU for processing.
+    Unless the CPU version this function supports only the 'euclidean'-distance metric.
+
+    Parameters:
+    data : cupy array with ndim=3 and of shape num_samples x channels x time_steps.
+        Contains the data to be converted. Each channel is converted independently of the others.
+
+    imgFilter : ImageFilter
+        A blur filter to be applied to each converted image.
+
+    dims : int
+        The number of embedding dimensions.
+
+    delay : int
+        The time-delay used for the calculation.
+
+    ----------
+    Returns:
+    rcp : ndarray of shape num_samples x channels x num_states x time_num_states
+        Containing the RCP conversion of the data.
+        The dimension num_states is defined by num_states = signal_size - (dims-1) * delay
+    If 'ImgFilter' != None, the filter is applied to each image after conversion.
+    """
+
+    num_states = data.shape[2] - (dims-1) * delay
+    
+    rcp_kernel = cp.RawKernel(r'''
+    extern "C" __global__
+    void gaf(const float* signal, const int delay, float* states) {
+    int row_id = blockIdx.x;
+    int col_id = threadIdx.x;
+    states[row_id*blockDim.x+col_id] = signal[row_id+col_id*delay];
+    }
+    ''', 'rcp')
+
+    rcp_samples = []
+    for sample in data:
+        rcp_channels = []
+        for channel in sample:
+            # get matrix of states (num_states x dims)
+            states = cp.zeros((num_states, dims), dtype=cp.float32)
+            rcp_kernel((num_states,), (dims,), (channel, delay, states))
+
+            # compute pairwise differences
+            rcp = states[:, cp.newaxis] - states
+            rcp = cp.linalg.norm(rcp, axis=2)
+            
+            # apply filter
+            rcp_channels.append(_apply_filter(cp.asnumpy(rcp), imgFilter))
+        rcp_samples.append(rcp_channels)
+                
+    return np.array(rcp_samples)
 
 
 def _apply_filter(img, imgFilter):

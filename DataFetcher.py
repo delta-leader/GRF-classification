@@ -52,8 +52,9 @@ class DataFetcher(object):
     def __init__(self, filepath):
         self.filelist = ["GRF_COP_AP_", "GRF_COP_ML_", "GRF_F_AP_", "GRF_F_ML_", "GRF_F_V_"] 
         self.metadata = "GRF_metadata.csv"
-        if filepath[-1] != "/":
-            filepath += "/"
+        if len(filepath) > 0:
+            if filepath[-1] != "/":
+                filepath += "/"
         self.__test_filepath(filepath)
         self.filepath = filepath
         self.class_dict = {"HC":0, "H":1, "K":2, "A":3, "C":4}
@@ -62,7 +63,7 @@ class DataFetcher(object):
         self.randSeedVal = 11
 
 
-    def set_randSeet(self, seed):
+    def set_randSeed(self, seed):
         """Sets the seed for the random number generator used to determine the affected side in ambigous cases (e.g. healthy control)
 
         Parameters:
@@ -80,7 +81,7 @@ class DataFetcher(object):
             self.randSeed = seed
 
 
-    def set_randSeetVal(self, seed):
+    def set_randSeedVal(self, seed):
         """Sets the seed for the random number generator used to determine the validation set.
 
         Parameters:
@@ -471,12 +472,15 @@ class DataFetcher(object):
         ----------
         Raises:
         ValueError : If the percentage for the validation set is not within 0-1.
+        TypeError : If 'val_setp' is neither None nor an integer.
         """
 
         val_set = None
         keys = affected.keys()
 
         if val_setp != None and val_setp != 0:
+            if not isinstance(val_setp, int):
+                raise TypeError("Please specify 'val_setp' as an integer value.")
             if val_setp < 0 or val_setp > 1:
                 raise ValueError("Please specify the validation set between 0 and 1 (Current: {}).".format(val_setp))
             val_set = self.__get_indices_of_val_set(affected[list(keys)[0]], val_setp)

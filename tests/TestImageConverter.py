@@ -63,7 +63,7 @@ class TestImageConverter(unittest.TestCase):
 
     def test_conversions(self):
         self.__assert_gaf_conversion()
-        #self.__assert_mtf_conversion()
+        self.__assert_mtf_conversion()
         #self.__assert_filtering()        
 
 
