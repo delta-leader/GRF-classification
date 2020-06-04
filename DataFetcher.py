@@ -472,15 +472,15 @@ class DataFetcher(object):
         ----------
         Raises:
         ValueError : If the percentage for the validation set is not within 0-1.
-        TypeError : If 'val_setp' is neither None nor an integer.
+        TypeError : If 'val_setp' is none of float/int/None.
         """
 
         val_set = None
         keys = affected.keys()
 
         if val_setp != None and val_setp != 0:
-            if not isinstance(val_setp, int):
-                raise TypeError("Please specify 'val_setp' as an integer value.")
+            if not (isinstance(val_setp, float) or isinstance(val_setp, int)):
+                raise TypeError("Please specify 'val_setp' as a floating-point value.")
             if val_setp < 0 or val_setp > 1:
                 raise ValueError("Please specify the validation set between 0 and 1 (Current: {}).".format(val_setp))
             val_set = self.__get_indices_of_val_set(affected[list(keys)[0]], val_setp)
