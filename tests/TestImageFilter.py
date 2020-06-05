@@ -99,6 +99,7 @@ class TestScaler(unittest.TestCase):
         imgFilter = ImageFilter("gaussian", kernel_size=(3,3), output_size=(3, 5))
         filtered_image = imgFilter.apply(image)
         assert np.allclose(filtered_image, cv.resize(cv.GaussianBlur(image, (3, 3), 0), (3, 5), interpolation = cv.INTER_AREA)), "Filtering + resizing did not produce the expected result."
+        assert not np.allclose(filtered_image, cv.GaussianBlur(cv.resize(image, (3, 5), interpolation = cv.INTER_AREA), (3, 3), 0)), "Filtering + resizing was not applied in the correct order."
 
         # Verify exceptions
         imgFilter = ImageFilter("resize")

@@ -50,7 +50,6 @@ class GRFImageConverter(object):
 
     def enableGpu(self):
         """Turns on GPU-usage for image conversion."""
-        #TODO verify for all images
         self.useGpu = True
 
 
@@ -103,13 +102,21 @@ class GRFImageConverter(object):
             - GAF: None, parameter is ignored. 
                    Note, however, that the computation might fail or return garbage if the signals are not within [-1, 1], 
                    since the arrcos-function is used to extract the polar coordinates.
-            - MTF : 
+            - MTF: 
                    1) num_bins : int
                         The number of bins used in the computation.
                    2) range : tuple of the form (min, max)
                         The range of the data.
                         #TODO assert global
-            #TODO expand
+            - RCP:
+                   1) dims : int
+                        The number of embedding dimensions.
+                   2) delay : int
+                        The time-delay used for the calculation
+                   3) metric : string
+                        The metric used to assess the distance between 2 states.
+                        Note that only 'euclidean' is supported on the GPU.
+                        The CPU supports all metrics available in 'scipy.spatial.distance.pdist()'
 
         imgFilter: ImageFilter, default=None
             A filter to be applied to each converted image before the final output.
@@ -125,12 +132,14 @@ class GRFImageConverter(object):
                     Containing the GADF conversion of the data.
             'mtf': ndarray of shape num_samples x width x height x channels
                     Containing the MTF conversion of the data.
-            #TODO extend description
+            'rcp': ndarray of shape width x height
+                    Containing the RCP conversion of the data
             Note: For GASF, GADF and MTF width = height = time_steps if no resize_filter is applied.
+                  For RCP width =  height = num_states = signal_size - (dims-1)*delay
 
         ----------
         Raises:
-        TypeError: If conversions is none of the following: None, str or list of str
+        TypeError: If conversions is none of the following: None, str or a list of conversions
         TypeError: If the imgFilter is neither None nor of type ImageFilter.
         ValueError: If one of the values specified in 'conversion' is none of the following: "gaf", "mtf" or "rcp".
         """
@@ -417,8 +426,8 @@ def _get_rcp_args(conv_args, signal_size, useGpu):
     TypeError : It 'dims' is not an integer.
     TypeError : If 'delay' is not an integer.
     TypeError : If 'metric' is not a string.
-    ValueError : If the number of embedding dimensions is equal to or exceeds the size of the signal (dims >= signal_size).
-    ValueError : If the time-delay equal to or exceeds half the size of the signal (dims >= signal_size/2).
+    ValueError : If the number of embedding dimensions is not within 0 < dims < signal_size.
+    ValueError : If the time-delay does not satisfy delay > 0 and (dims-1)*delay <= signal_size
     ValueError : If 'metric' is not a valid value to be used for the conversion. Valid values are:
                  - CPU: All metrics accepted by scipy.spatial.distance.pdist()
                  - GPU: 'euclidean'
@@ -436,26 +445,30 @@ def _get_rcp_args(conv_args, signal_size, useGpu):
         else:
             raise TypeError("The embedding dimensions has to be specified as an integer."
     )
-    if dims >= signal_size:
-        raise ValueError("The number of embedding dimensions is equal to or exceeds the size of the signal {} vs {}.".format(dims, signal_size))
+    if dims >= signal_size or dims < 1:
+        raise ValueError("The number of embedding dimensions must be within 0 < 'dims' <  {}, but {} was provided.".format(signal_size, dims))
 
     delay = 2
     if "delay" not in conv_args.keys():
         warnings.warn("The time-delay was not specified for RCP conversion. Will default to {}".format(delay))
     else:
         if isinstance(conv_args["delay"], int):
-            dims = conv_args["delay"]
+            delay = conv_args["delay"]
         else:
             raise TypeError("The time-delay has to be specified as an integer."
     )
-    if delay >= signal_size/2:
-        raise ValueError("The time delay is too large  {} >= {}/2.".format(dims, signal_size))
+    if delay < 1 or (dims-1)*delay > signal_size:
+        raise ValueError("The time delay does not satisfy either 0 < 'delay' or ('dims'({})-1)*'delay' <= 'signal_size'({}). Provided values was {}".format(dims, signal_size, delay))
 
     metric = "euclidean"
     if "metric" not in conv_args.keys():
         warnings.warn("The metric for the distance calculations in the RCP conversion was not specified. Will default to '{}'".format(delay))
-    if not isinstance(conv_args["metric"], str):
-        raise TypeError("The distance metric has to be specified as a string")
+    else:
+        if not isinstance(conv_args["metric"], str):
+            raise TypeError("The distance metric has to be specified as a string")
+        else:
+            metric = conv_args["metric"]
+
     if useGpu:
         if metric not in ["euclidean"]:
             raise ValueError("Only euclidean distance metric is supported on the GPU.")
@@ -727,23 +740,21 @@ def _calc_rcp(signal, imgFilter, args):
     metric = args[2]
     num_states = signal.shape[0] - (dims-1) * delay
 
-    # creating an array where each row corresponds to a single state (8 is the number of bytes for a float32 value)
-    states = np.lib.stride_tricks.as_strided(signal, (num_states, dims), (8, dims*8))
+    # creating an array where each row corresponds to a single state (4 is the number of bytes for a float32 value)
+    states = np.lib.stride_tricks.as_strided(signal, (num_states, dims), (4, delay*4))
 
     # using scipy to compute pairwise distances
     distances = pdist(states, metric=metric)
 
     # distances are stored in a triangular fashion
     # get indices of upper triangle
-    upper_indices = np.triu_indices(distances, 1)
-    # get indices of lower triangle
-    lower_indices = np.trilu_indices(distances, 1)
-
-    rcp = np.zeros(num_states, num_states)
+    upper_indices = np.triu_indices(num_states, 1)
+    rcp = np.zeros((num_states, num_states))
 
     # fill with values
     rcp[upper_indices] = distances
-    rcp[lower_indices] = distances
+    #distance matrix is always symmetric
+    rcp = rcp + np.transpose(rcp)
 
     return _apply_filter(rcp, imgFilter)
 
@@ -782,9 +793,9 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
     """
 
     converted_data = {}
+    data = cp.asarray(data)
     for image in conversions:
         if image == "gaf":
-            data = cp.asarray(data)
             min_value = cp.min(data)
             max_value = cp.max(data)
             if min_value < -1:
@@ -797,11 +808,11 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
             num_bins, range_min, range_max = _get_mtf_args(conv_args)
             _check_range_mtf((range_min, range_max), (np.min(data), np.max(data)))
             quantile_borders = np.linspace(range_min, range_max, num_bins, endpoint=False)[1:]
-            converted_data["mtf"] = _convert_to_mtf_gpu(data, imgFilter, quantile_borders)
+            converted_data["mtf"] = _convert_to_mtf_gpu(cp.asnumpy(data), imgFilter, quantile_borders)
 
         elif image == "rcp":
             dims, delay, _ = _get_rcp_args(conv_args, data.shape[2], True)
-            converted_data = _convert_to_rcp_gpu(cp.asarray(data), imgFilter, dims, delay)
+            converted_data["rcp"] = _convert_to_rcp_gpu(data, imgFilter, dims, delay)
 
         else:
             raise ValueError("No conversion defined for '{}'. Has to be one of 'gaf'/'mtf'/'rcp'.".format(image))
@@ -912,15 +923,10 @@ def _convert_to_mtf_gpu(data, imgFilter, quantile_borders):
 
             # last value must be excluded (no transition)
             markov_kernel((1,), (time_steps-1,), (bin_assignment, num_bins, adj_mat))
-            #for i in range(time_steps-1):
-            #    adj_mat[bin_assignment[i], bin_assignment[i+1]] += 1
 
             # normalize by column - maximum is needed to avoid div0
-            #adj_mat = cp.asarray(adj_mat)
             adj_mat = adj_mat/cp.maximum(1, adj_mat.sum(axis=0))
-            #print(adj_mat)
 
-            #bin_assignment = cp.asarray(bin_assignment, dtype=cp.int32)
             adj_mat = cp.asarray(adj_mat)
             mtf = cp.zeros([time_steps, time_steps], dtype=cp.float32)
             mtf_kernel((time_steps,), (time_steps,), (bin_assignment, adj_mat, num_bins, mtf))
@@ -960,7 +966,7 @@ def _convert_to_rcp_gpu(data, imgFilter, dims, delay):
     
     rcp_kernel = cp.RawKernel(r'''
     extern "C" __global__
-    void gaf(const float* signal, const int delay, float* states) {
+    void rcp(const float* signal, const int delay, float* states) {
     int row_id = blockIdx.x;
     int col_id = threadIdx.x;
     states[row_id*blockDim.x+col_id] = signal[row_id+col_id*delay];
@@ -1006,110 +1012,3 @@ def _apply_filter(img, imgFilter):
         return img
 
     return imgFilter.apply(img)
-
-
-
-"""
-fetcher = DataFetcher("/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC")
-converter = GRFImageConverter()
-scaler = GRFScaler()
-data = fetcher.fetch_set(dataset="TRAIN_BALANCED", averageTrials=False, scaler=scaler)
-
-test = {
-    "affected": data["affected"][0:1, :, :],
-    "non_affected": data["non_affected"][0:1, :, :],
-    "label": data["label"][0]
-}
-args ={
-    "num_bins": 32,
-    "range": (-1, 1)
-}
-image = converter.convert(data, conversions="mtf", conv_args=args)
-print("CONVERSION FINISHED")
-converter.enableGpu()
-image_gpu = converter.convert(data, conversions="mtf", conv_args=args)
-
-#plotter = GRFPlotter()
-#plotter.plot_image(image, keys="affected")
-#plotter.plot_image(image_gpu, keys="affected")
-"""
-"""
-blur = ImageFilter("resize", (10,10), output_size=(50,50))
-blur_image = converter.convert(test, imgFilter=blur)
-plotter.plot_image(blur_image, keys="affected")
-
-#converter.enableGpu()
-#image_gpu = converter.convert_to_GAF(data, plot=False)
-"""
-#Compare GPU and CPU
-"""
-assert np.allclose(image["affected"]["gasf"], image_gpu["affected"]["gasf"], rtol=1e-05, atol=1e-06)
-assert np.allclose(image["affected"]["gadf"], image_gpu["affected"]["gadf"], rtol=1e-05, atol=1e-06)
-assert np.allclose(image["non_affected"]["gasf"], image_gpu["non_affected"]["gasf"], rtol=1e-05, atol=1e-06)
-assert np.allclose(image["non_affected"]["gadf"], image_gpu["non_affected"]["gadf"], rtol=1e-05, atol=1e-06)
-print("GPU SUCCESS!")
-
-
-filelist = ["GRF_F_V_", "GRF_F_AP_", "GRF_F_ML_", "GRF_COP_AP_", "GRF_COP_ML_"] 
-ver_data={}
-for item in filelist:
-    component_name = item[item.index("_")+1:-1].lower()
-    new_data = pd.read_csv("/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"+item+"PRO_left.csv", header=0)
-    # SESSION_ID 1338 is the first item in the TRAIN_BALANCED set (left side affected) with 10 Trials
-    #ver_data[component_name]=new_data[(new_data["SESSION_ID"]==1338) & (new_data["TRIAL_ID"]==1)].drop(columns=["SUBJECT_ID", "SESSION_ID", "TRIAL_ID"]).values
-    ver_data[component_name]=new_data[new_data["SESSION_ID"]==1338].drop(columns=["SUBJECT_ID", "SESSION_ID", "TRIAL_ID"]).values
-
-ver_data = scaler.transform(ver_data)
-keys = list(ver_data.keys())
-arr = np.array(list(ver_data.values()))
-arr = np.swapaxes(arr, 0, 1)
- 
-
-
-arr_test = np.swapaxes(arr, 1,2)
-# Comapre original data to fetched one
-#assert np.allclose(arr_test, test["affected"], rtol=1e-05, atol=1e-07)
-"""
-
-#Compare GPU
-"""
-arr_gpu = cp.asarray(arr, dtype=cp.float32)
-angle = cp.arccos(arr_gpu)
-for i in range(angle.shape[0]):
-    j = 0
-    for signal in angle[i]:
-        n = signal.shape[0]
-        #print(signal)
-        gasf = cp.zeros((n, n), dtype=cp.float32)
-        gadf = cp.zeros((n, n), dtype=cp.float32)
-        gaf_kernel((n,), (n,), (signal, gasf, gadf))  # grid, block and arguments
-        #print(j)
-        #print(image["affected"]["gadf_gpu"][i,:,:,j])
-        #print(gadf)
-        assert cp.allclose(gasf, image["affected"]["gasf_gpu"][i, :, :, j], rtol=1e-05, atol=1e-06)
-        assert cp.allclose(gadf, image["affected"]["gadf_gpu"][i, :, :, j], rtol=1e-05, atol=1e-06)
-        j += 1
-"""
-
-
-#Compare CPU
-"""
-for k in range(5):
-    angle = np.arccos(arr[0, k, :])
-    num = arr[0, k].shape[0]
-    gasf = np.empty([num, num])
-    gadf = np.empty([num, num])
-    for i in range(num):
-        for j in range(i+1):
-            gasf[i,j] = gasf[j,i] = np.cos(angle[i]+angle[j])
-            gadf[i,j] = np.sin(angle[i]-angle[j])
-            gadf[j,i] = np.sin(angle[j]-angle[i])
-    #print(gasf)
-    #print(image["affected"]["gasf"][0, :, :, k])
-    assert np.allclose(image["affected"]["gasf"][0, :, :, k], gasf, rtol=1e-05, atol=1e-06), "Wrong GASF ({})".format(k)
-    assert np.allclose(image["affected"]["gadf"][0, :, :, k], gadf, rtol=1e-05, atol=1e-06), "Wrong GADF ({})".format(k)
-    #plt.imshow(gasf, cmap="jet")
-    #plt.show()
-    #plt.imshow(gadf, cmap="jet")
-    #plt.show()
-"""

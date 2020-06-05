@@ -7,7 +7,7 @@ class GRFPlotter(object):
     
     def __init__(self):
         self.valid_keys = ["affected", "non_affected", "affected_val", "non_affected_val"]
-        self.valid_images = ["gasf", "gadf", "mtf", "rc"]
+        self.valid_images = ["gasf", "gadf", "mtf", "rcp"]
         self.comp_order = ["f_v", "f_ap", "f_ml", "cop_ap", "cop_ml"]
         self.colormap = "jet"
 
@@ -26,7 +26,7 @@ class GRFPlotter(object):
             If None, all of the elements are plotted (if available).
 
         images : list of string, string or None, default=None
-            Specifies which images to plot. Can either be a list containing the following elements : 'gasf', "gadf', 'mtf' and 'rc',
+            Specifies which images to plot. Can either be a list containing the following elements : 'gasf', "gadf', 'mtf' and 'rcp',
             or a single element passed as a string.
             If None, all of the images are plotted (if available)
 
