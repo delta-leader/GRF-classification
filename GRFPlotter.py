@@ -1,8 +1,34 @@
 import matplotlib.pyplot as plt
 
 class GRFPlotter(object):
-    #TODO extend description
-    """Plots the data for GRFS
+    """Plotter to be used for images created from GRF-data.
+    The data will be plotted as a heatmap using 'matplotlib' and the specified colormap.
+    The plotter is able to process the data as outputted by 'GRFImageConverter' no further modification is necessary.
+    
+    Currently 3 types of images are supported:
+    - Gramian Angular Field (GAF): both Summation (GASF) and Difference (GADF) images are created.
+    - Markov Transition Field: Signals are divided into bins and probabilities of bin transitions are calculated (requieres the setting of #bins).
+    - Recurrence Plots (RCP): Requires the setting of an embedding dimension and a time delay.
+
+    Per default, all available data is plotted but the user can make the following selections:
+    - Select the data (e.g. "affected", "non_affected)
+    - Select the images (e.g. "gasf", "rcp")
+    - Select the sample (e.g. 1, 5)
+    - Select the channels (e.g. "f_v", "cop_ml")
+
+    Attributes:
+    valid_keys : list of string
+        Contains the valid keys for the data-dictionary. Currently 'affected', 'non_affected', 'affected_val' and 'non_affected_val'.
+        Only data stored under those keys can be plotted.
+    
+    valid_images : list of string
+        Contains the keys the images converted from the data. Currently only 'gasf', 'gadf', 'mtf' and 'rcp' are supported.
+
+    comp_order : list of string
+        Contains the names of the force components in the same order as they are stored within the data.
+
+    colormap : string
+        Contains the colormap to be used for plotting.
     """
     
     def __init__(self):
@@ -10,6 +36,51 @@ class GRFPlotter(object):
         self.valid_images = ["gasf", "gadf", "mtf", "rcp"]
         self.comp_order = ["f_v", "f_ap", "f_ml", "cop_ap", "cop_ml"]
         self.colormap = "jet"
+
+    def set_colormap(self, colormap):
+        """Sets the colormap used for plotting.
+
+        Parameters:
+        colormap : string
+            The colormap to be used.
+
+        ----------
+        Raises:
+        ValueError : If the specified colormap is not available in 'matplotlib.pyplot.colormaps()'.
+        """
+
+        if colormap in plt.colormaps():
+            self.colormap = colormap
+        else :
+            raise ValueError("The specified colormap '{}' is not available.".format(colormap))
+
+
+
+    def set_comp_order(self, comp_order):
+        """Sets the component order within the data.
+        This is used to identify the order in which the force components are stored.
+
+        Parameters:
+        comp_order : list of string
+            The new component order.
+
+        ----------
+        Raises:
+        TypeError : If the component order is not a list
+        ValueError : If one of the 5 force components if missing from the list.
+        ValueError : If a value is included that is not a valid force component.
+        """
+
+        if not isinstance(comp_order, list):
+            raise TypeError("Component order is not a list.")
+
+        if len(set(comp_order)) != 5:
+            raise ValueError ("Component order must include exactly 5 different force components, but found {}".format(len(set(comp_order))))
+        for component in comp_order:
+            self.__check_key(component, self.comp_order)    
+        
+        self.comp_order = comp_order
+        
 
 
     def plot_image(self, data, keys=None, images=None, sampleIndex=None, channels=None, comp_order=None ):
@@ -46,6 +117,7 @@ class GRFPlotter(object):
 
         ----------
         Raises:
+        TypeError : If 'data' is not a dictionary.
         TypeError : If 'keys' is none of the following: None, string or list of string.
         TypeError : If 'images' is none of the following: None, string or list of string.
         TypeError : If 'sampleIndex' is none of the following: None, int or list of int.
@@ -53,6 +125,9 @@ class GRFPlotter(object):
         TypeError : If 'compOrder' is none of the following: None, list of string.
         TypeError : If 'channels' is none of the following: None, string, list of string.
         """
+
+        if not isinstance(data, dict):
+            raise TypeError("Data must be specified as a dictionary.")
 
         # Check available keys
         available_keys = self.__get_keys(data)
@@ -68,7 +143,7 @@ class GRFPlotter(object):
                 self.__check_key(key, available_keys)
 
         else:
-            raise TypeError("An invalid values was provided for 'keys' ({}).".format(keys))
+            raise TypeError("An invalid value was provided for 'keys' ({}).".format(keys))
 
 
         # Check available images
@@ -85,7 +160,7 @@ class GRFPlotter(object):
                 self.__check_key(image, available_images)
 
         else:
-            raise TypeError("An invalid values was provided for 'images' ({}).".format(images))
+            raise TypeError("An invalid value was provided for 'images' ({}).".format(images))
 
 
         # Check sampleIndex
@@ -94,14 +169,14 @@ class GRFPlotter(object):
             sampleIndex = range(num_samples)
 
         elif isinstance(sampleIndex, int):
-            num_samples = [num_samples]
+            sampleIndex = [sampleIndex]
 
         elif isinstance(sampleIndex, list):
             if all(isinstance(index, int) for index in sampleIndex):
                 raise TypeError("All elements specified by 'sampleIndex' have to be integers.")
         
         else:
-            raise TypeError("An invalid values was provided for 'sampleIndex' ({}).".format(sampleIndex))
+            raise TypeError("An invalid value was provided for 'sampleIndex' ({}).".format(sampleIndex))
     
         if max(sampleIndex) >= num_samples:
             raise ValueError("Index '{}' is not available across all datasets".format(max(sampleIndex)))
@@ -139,11 +214,6 @@ class GRFPlotter(object):
             channelIndices.append(comp_order.index(channel))
 
 
-        # plot
-        #print(keys)
-        #print(images)
-        #print(sampleIndex)
-        #print(channelIndices)
         for key in keys:
             for image in images:
                 for i in sampleIndex:
@@ -236,9 +306,8 @@ class GRFPlotter(object):
                     images.append(image)
             available_images.append(images)   
 
-        common_images = set(available_images[0])
-        for images in available_images[1:]:
-            common_images = common_images & set(images)
+        #remove duplicates
+        common_images = set(available_images)
 
         common_images = list(common_images)        
         if len(common_images) < 1:
