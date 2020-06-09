@@ -8,14 +8,6 @@ import pandas as pd
 from DataFetcher import DataFetcher
 from GRFScaler import GRFScaler
 from sklearn.preprocessing import StandardScaler
-from DataFetcher import _select_initial_measurements
-from DataFetcher import _drop_orthopedics
-from DataFetcher import _trim_metadata
-from DataFetcher import _select_dataset
-from DataFetcher import _sample
-from DataFetcher import _average_trials
-from DataFetcher import _scale
-from DataFetcher import _fit_scaler
 
 filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC"
 
@@ -33,7 +25,6 @@ class TestFetcher(unittest.TestCase):
 
     def test_fetch(self):
         fetcher = DataFetcher(filepath)
-
         self.__assert_data_arrangment(fetcher)
         self.__assert_class_labels(fetcher)
         self.__assert_data_selection(fetcher)
@@ -44,6 +35,7 @@ class TestFetcher(unittest.TestCase):
         self.__assert_rand(fetcher)
         self.__assert_comp_order(fetcher)
         self.__assert_val_set(fetcher)
+        self.__assert_include_info(fetcher)
 
 
         
@@ -863,6 +855,70 @@ class TestFetcher(unittest.TestCase):
             fetcher.fetch_set(raw=True, dataset="TRAIN", averageTrials=False, concat=True, val_setp=5)
         with self.assertRaises(TypeError):
             fetcher.fetch_set(val_setp="9")
+
+    
+
+    def __assert_include_info(self, fetcher):
+        """Verifies that the corresponding info to the fetched dataset is extracted correctly."""
+
+        train, test = fetcher.fetch_data(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, include_info=False)
+        assert "info" not in train.keys(), "Metadata was fetched for train-set even though it was not specified."
+        assert "info" not in test.keys(), "Metadata was fetched for test-set even though it was not specified."
+        
+        train, test = fetcher.fetch_data(raw=False, dataset="TRAIN_BALANCED", averageTrials=True, concat=False, include_info=True)
+        assert "info" in train.keys(), "Metadata was not fetched for train-set."
+        assert "info" in test.keys(), "Metadata was not fetched for test-set."
+        assert "SUBJECT_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert "SESSION_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert train["info"].shape[1] == 2, "Expected 2 columns for 'info' but found {}.".format(train["info"].shape[1])
+        assert train["info"].shape[0] == train["affected"].shape[0], "Amount of samples in 'info' and 'affected' ({} vs {}).".format(train["info"].shape[0], train["affected"].shape[0])
+        assert "SUBJECT_ID" in test["info"].columns, "SUBJECT_ID not included in metadata for test-set."
+        assert "SESSION_ID" in test["info"].columns, "SUBJECT_ID not included in metadata for test-set."
+        assert test["info"].shape[1] == 2, "Expected 2 columns for 'info' but found {}.".format(train["info"].shape[1])
+        assert test["info"].shape[0] == test["affected"].shape[0], "Amount of samples in 'info' and 'affected' ({} vs {}).".format(test["info"].shape[0], test["affected"].shape[0])
+
+        # SESSION_ID 1338 is the first item in the TRAIN_BALANCED set (left side affected)
+        assert train["info"]["SESSION_ID"][0] == 1338, "Wrong SESSION_ID for first element. Expected 1338, found {}.".format(train["info"]["SESSION_ID"][0])
+        assert train["info"]["SUBJECT_ID"][0] == 320, "Wrong SUBJECT_ID for first element. Expected 320, found {}.".format(train["info"]["SUBJECT_ID"][0])
+
+
+        train = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=False, concat=False, include_info=True)
+        assert "info" in train.keys(), "Metadata was not fetched for train-set."
+        assert "SUBJECT_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert "SESSION_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert "TRIAL_ID" in train["info"].columns, "TRIAL_ID not included in metadata for train-set."
+        assert train["info"].shape[1] == 3, "Expected 3 columns for 'info' but found {}.".format(train["info"].shape[1])
+        assert train["info"].shape[0] == train["affected"].shape[0], "Amount of samples in 'info' and 'affected' ({} vs {}).".format(train["info"].shape[0], train["affected"].shape[0])
+
+        # SESSION_ID 1338 is the first item in the TRAIN_BALANCED set (left side affected) with 10 Trial
+        for i in range(10):
+            assert train["info"]["SESSION_ID"][i] == 1338, "Wrong SESSION_ID for {} element. Expected 1338, found {}.".format(i, train["info"]["SESSION_ID"][i])
+            assert train["info"]["SUBJECT_ID"][i] == 320, "Wrong SUBJECT_ID for {} element. Expected 320, found {}.".format(i, train["info"]["SUBJECT_ID"][i])
+            assert train["info"]["TRIAL_ID"][i] == i+1, "Wrong TRIAL_ID for {} element. Expected {}, found {}.".format(i, i+1, train["info"]["TRIAL_ID"][i])
+
+        
+        # check for info in validation set
+        train = fetcher.fetch_set(raw=False, dataset="TRAIN_BALANCED", averageTrials=False, concat=True, val_setp=0.25, include_info=False)
+        assert "info" not in train.keys(), "Metadata was fetched for train-set even though it was not specified."
+        
+        train, test = fetcher.fetch_data(raw=False, dataset="TRAIN", averageTrials=True, concat=True, val_setp=0.25, include_info=True)
+        assert "info" in train.keys(), "Metadata was not fetched for train-set."
+        assert "info_val" in train.keys(), "Metadata for validation-set was not included."
+        assert "info" in test.keys(), "Metadata was not fetched for test-set."
+        assert "info_val" not in test.keys(), "Metadata for validation was included in test-set, even though there is no validation-set."
+        assert "SUBJECT_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert "SESSION_ID" in train["info"].columns, "SUBJECT_ID not included in metadata for train-set."
+        assert "SUBJECT_ID" in train["info_val"].columns, "SUBJECT_ID not included in metadata for validation-set."
+        assert "SESSION_ID" in train["info_val"].columns, "SUBJECT_ID not included in metadata for validation-set."
+        assert train["info"].shape[1] == 2, "Expected 2 columns for 'info' but found {}.".format(train["info"].shape[1])
+        assert train["info"].shape[0] == train["affected"].shape[0], "Amount of samples in 'info' and 'affected' ({} vs {}).".format(train["info"].shape[0], train["affected"].shape[0])
+        assert train["info_val"].shape[1] == 2, "Expected 2 columns for 'info_val' but found {}.".format(train["info_val"].shape[1])
+        assert train["info_val"].shape[0] == train["affected_val"].shape[0], "Amount of samples in 'info_val' and 'affected_val' ({} vs {}).".format(train["info_val"].shape[0], train["affected_val"].shape[0])
+        
+        assert "SUBJECT_ID" in test["info"].columns, "SUBJECT_ID not included in metadata for test-set."
+        assert "SESSION_ID" in test["info"].columns, "SUBJECT_ID not included in metadata for test-set."
+        assert test["info"].shape[1] == 2, "Expected 2 columns for 'info' but found {}.".format(train["info"].shape[1])
+        assert test["info"].shape[0] == test["affected"].shape[0], "Amount of samples in 'info' and 'affected' ({} vs {}).".format(test["info"].shape[0], test["affected"].shape[0])
 
     
 

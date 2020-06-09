@@ -6,8 +6,8 @@ import pandas as pd
 from errno import ENOENT
 from GRFScaler import GRFScaler
 
-# testing purposes
-import matplotlib.pyplot as plt
+# testing purposes only
+# import matplotlib.pyplot as plt
 
 class DataFetcher(object):
     """Reads the GRF data from the provided files and takes care of the preprocessing steps.
@@ -61,6 +61,17 @@ class DataFetcher(object):
         self.comp_order = ["f_v", "f_ap", "f_ml", "cop_ap", "cop_ml"] 
         self.randSeed = 42
         self.randSeedVal = 11
+
+    
+    def get_class_dict(self):
+        """Returns the dictionary used to convert the class-lables into integer values
+
+        Returns:
+        class_dict : dict
+            Dictionary containing the encoding of the class-labels.
+        """
+
+        return self.class_dict
 
 
     def set_randSeed(self, seed):
@@ -144,7 +155,7 @@ class DataFetcher(object):
         self.comp_order = comp_order
 
 
-    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0):
+    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False):
         """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
         Both the specified dataset and the test set are processed in the same manner.
 
@@ -186,20 +197,29 @@ class DataFetcher(object):
             If True, the force components are concatenated according to the order specified in 'comp_order'.
             Concatenation modifies the original data in order to provide a continuous signal.
 
-        val_setp : float
+        val_setp : float, default=0
             Contains the percentage of samples to include in the validation set.
             This parameter is ignored for the TEST-set.
 
+        include_info : bool, default=False
+            If True, additional information (e.g. SUBJECT_ID, SESSION_ID) is exported along with the data.
+
         ----------
         Returns:
-        train : dictionary containing the keys 'label', 'affected' and 'non_affected'.
+        train : dictionary containing at least the keys 'label', 'affected' and 'non_affected'.
             'label': numpy array of integers containing the class labels (according to 'class_dict').
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
+            If 'include_info' == True:
+                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
+
             If 'val_setp' > 0:
-            'affected_val': numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
-            'non_affected_val': same as above but contains the validation set for the unaffected leg.
-            'label_val': numpy array of integers containing the class labels for the validation set.
+                'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
+                'non_affected_val' same as above but contains the validation set for the unaffected leg.
+                'label_val': numpy array of integers containing the class labels for the validation set.
+                If 'include_fino' == True:
+                    'info_val ' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) for the validation set.
+            
             Contains only the data from the specified set.
 
         test : dictinary, same format as above, but never contains 'affected_val' nor 'non_affected_val'.
@@ -213,13 +233,13 @@ class DataFetcher(object):
         if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
 
-        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat, val_setp)
-        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat, val_setp=None)
+        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat, val_setp, include_info)
+        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat, val_setp=None, include_info=include_info)
 
         return train, test
 
 
-    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0):
+    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False):
         """Reads and preprocesses all 5 force components for the specified dataset.
 
         Parameters:
@@ -260,19 +280,27 @@ class DataFetcher(object):
             If True, the force components are concatenated according to the order specified in 'comp_order'.
             Concatenation modifies the original data in order to provide a continuous signal.
 
-        val_setp : float
+        val_setp : float, default=0
             Contains the percentage of samples to include in the validation set.
+
+        include_info : bool, default=False
+            If True, additional information (e.g. SUBJECT_ID, SESSION_ID) is exported along with the data.
 
         ----------
         Returns:
-        data : dictionary containing the keys 'label', 'affected' and 'non_affected'.
+        data : dictionary containing at least the keys 'label', 'affected' and 'non_affected'.
             'label': numpy array of integers containing the class labels (according to 'class_dict').
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
+            If 'include_info' == True:
+                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
+
             If 'val_setp' > 0:
-            'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
-            'non_affected_val' same as above but contains the validation set for the unaffected leg.
-            'label_val': numpy array of integers containing the class labels for the validation set.
+                'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
+                'non_affected_val' same as above but contains the validation set for the unaffected leg.
+                'label_val': numpy array of integers containing the class labels for the validation set.
+                If 'include_info' == True:
+                    'info_val ' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) for the validation set.
         
         ----------
         Raises:
@@ -313,14 +341,20 @@ class DataFetcher(object):
 
         if concat:
             left, right = [self.__concat(leg) for leg in (left, right)]
+
             # testing purposes only - assert that the range is still valid
+            """
             for leg in (left, right):
                 _assert_scale(leg, scaler)
+            """
 
         affected, non_affected = self.__arrange_data(left, right, metadata)
-        data = self.__split_and_format(affected, non_affected, metadata, val_setp)
+        data = self.__split_and_format(affected, non_affected, metadata, val_setp, include_info)
+       
         #TODO remove print
-        print(data["affected"].shape)
+        print("Exported dataset with shape: {}".format(data["affected"].shape))
+        if "affected_val" in data.keys():
+           print("Validation-set shape: {}".format(data["affected_val"].shape))
 
         return data     
         
@@ -433,17 +467,19 @@ class DataFetcher(object):
             concat_series = pd.concat([concat_series, data.add(carry, axis="index")], axis=1)
 
         # testing purposes only
+        """
         # plt.plot(_get_data_part(concat_series).values[0])
         # plt.show()
         len_series = data_dict[self.comp_order[0]].shape[1]
         len_info = _get_info_part(data_dict[self.comp_order[0]]).shape[1]
         assert concat_series.shape[0] == data_dict[self.comp_order[0]].shape[0], "Amount of samples does not match after concatenating {} vs {}".format(concat_series.shape[0], data_dict[self.comp_order[0]].shape[0])
         assert concat_series.shape[1] == len_series*5-len_info*4, "Length does not match after concatenating {} vs {}".format(concat_series.shape[1], len_series*5-len_info*4)
+        """
 
         return {"concat": concat_series}
 
 
-    def __split_and_format(self, affected, non_affected, metadata, val_setp):
+    def __split_and_format(self, affected, non_affected, metadata, val_setp, include_info):
         """Splits the provided data into values and labels.
         Values are formatted into single-precision numpy-arrays.
         Labels are transformed into integers (specified in 'class_dict').
@@ -464,10 +500,15 @@ class DataFetcher(object):
         val_setp : float
             Contains the percentage of samples to include in the validation set.
 
+        include_info : bool
+            Whether or not to include additional information in the returned dictionary.
+
         ----------
         Returns:
         data : dictionary containing the keys 'label', 'affected' and 'non_affected' (plus 'affected_val' and 'non_affected_val' if 'val_set' is specified).
             Contains the labels (as integers) and the data for the affected/unaffected side (as float32).
+            If 'include_info' is True, and 'info' (and 'info_val' if 'val_set' is specified) is added to the dictionary containing additional information
+            such as SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
 
         ----------
         Raises:
@@ -491,6 +532,12 @@ class DataFetcher(object):
 
         affected_formatted = {}
         non_affected_formatted = {}
+
+        if include_info:
+            # just take the info from the first component because it is the same across all components
+            info = _get_info_part(affected[list(affected.keys())[0]])
+            data["info"] = info.reset_index(drop=True)
+
         for component in affected:
             affected_formatted[component] = _format_data(affected[component])
             non_affected_formatted[component] = _format_data(non_affected[component])
@@ -513,13 +560,19 @@ class DataFetcher(object):
             data["non_affected"] = np.delete(data["non_affected"], val_set, axis=0)
             data["label"] = np.delete(data["label"], val_set, axis=0)
 
+            if include_info:
+                data["info_val"] = data["info"].take(val_set, axis=0)
+                data["info"] = data["info"].drop(val_set)
+
             # testing purposes only - Verify that the train- and validation-set are mutally exclusive on SESSION_ID & SUBJECT_ID
+            """
             for component in affected:
                 affected[component] =  affected[component].reset_index(drop=True)
                 val_test = affected[component].iloc[val_set]
                 train_test = affected[component].iloc[~affected[component].index.isin(val_set)]
                 assert not val_test["SESSION_ID"].isin(train_test["SESSION_ID"]).any(), "Something went wrong during the selection of the validation set."
                 assert not val_test["SUBJECT_ID"].isin(train_test["SUBJECT_ID"]).any(), "Something went wrong during the selection of the validation set."
+            """
 
         return data
 
@@ -567,6 +620,7 @@ class DataFetcher(object):
             non_affected[component] = non_affected[component].append(left_dict[component][rightSide_affected], sort=False)
 
             # testing purposes only
+            """
             assert affected[component].shape == non_affected[component].shape == left_dict[component].shape, "Length does not match after arranging the data."
             # assert again
             if "TRIAL_ID" in affected[component].columns:
@@ -575,6 +629,8 @@ class DataFetcher(object):
             else:
                 assert affected[component]["SESSION_ID"].equals(non_affected[component]["SESSION_ID"]), "The order of the data is not preserved."
                 assert affected[list(affected.keys())[0]]["SESSION_ID"].equals(non_affected[component]["SESSION_ID"]), "The order of the data is not preserved across components."
+
+            """
 
         return affected, non_affected
 
@@ -597,6 +653,8 @@ class DataFetcher(object):
             Same length as as data, boolean numpy array containing one value for each sample (True if the left side is the affected side, False otherwise).
         """
 
+        # this assures affected side is choosen per Session (i.e. all Trials have the same affected side).
+        # no coherency is guaranteed across Sessions (i.e. the affected side for a health person might change across sessions)
         affected_info = metadata[["SESSION_ID", "AFFECTED_SIDE"]].set_index("SESSION_ID")
         random.seed(self.randSeed)
 
@@ -609,7 +667,6 @@ class DataFetcher(object):
 
         affected_info["LEFT_AFFECTED"] = affected_info["AFFECTED_SIDE"].apply(is_leftSide_affected)
         data = data.join(affected_info, on="SESSION_ID")
-        #TODO account for same person across multiple sessions
 
         return data["LEFT_AFFECTED"].values
 
@@ -833,12 +890,15 @@ def _sample(data_dict, stepsize, raw):
             data = np.apply_along_axis(func1d=_interp_with_Nans, axis=1, arr=data, num_samples=num_samples)
 
             # testing purposes only
+            """
             assert np.isnan(data).any() == False, "There are NaNs remaining within the dataset after sampling."
+            """
 
             data = pd.DataFrame(data, dtype=np.float32)
             sampled_dict[component] = pd.concat([info, data], axis=1)
 
             # testing purposes only
+            """
             assert sampled_dict[component].shape[0] == info.shape[0], "{} contains {} samples, but expected {}.".format(component, sampled_dict[component].shape[0], info.shape[0])
             assert sampled_dict[component].shape[1] == num_samples+3, "{} contains {} entries per row, but expected {}.".format(component, sampled_dict[component].shape[1], num_samples+3)
             # fig, (ax1, ax2) = plt.subplots(2)
@@ -846,6 +906,7 @@ def _sample(data_dict, stepsize, raw):
             # ax1.plot(data_dict[component].iloc[0, 3:])
             # ax2.plot(sampled_dict[component].iloc[0, 3:])
             # plt.show()
+            """
 
     else:
         if type(stepsize) is not int:
@@ -857,7 +918,9 @@ def _sample(data_dict, stepsize, raw):
             for component in data_dict:
                 sampled_dict[component] = data_dict[component].iloc[:, usecols]
                 # testing purposes only
+                """
                 assert sampled_dict[component].shape[1] == len(usecols), "{} contains {} entries per row, but expected {}.".format(component, sampled_dict[component].shape[1], len(usecols))
+                """
         else:
             # return original dict
             return data_dict
@@ -884,7 +947,9 @@ def _average_trials(data_dict):
         avg_dict[component] = data_dict[component].drop(columns="TRIAL_ID").groupby(["SUBJECT_ID", "SESSION_ID"], as_index=False, sort=False).mean()
 
         # testing purposes only
+        """
         assert avg_dict[component]["SESSION_ID"].is_unique, "There was an error when averaging the Trials, duplicate SESSION_IDs remain."
+        """
 
     return avg_dict
 
