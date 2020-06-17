@@ -306,8 +306,8 @@ class GRFPlotter(object):
                     images.append(image)
             available_images.append(images)   
 
-        #remove duplicates
-        common_images = set(available_images)
+        #flatten list & remove duplicates
+        common_images = set([item for items in available_images for item in items])
 
         common_images = list(common_images)        
         if len(common_images) < 1:
