@@ -44,6 +44,12 @@ class DataFetcher(object):
         Defines the order of the force components in the output tensor (= ordering within the first axis),
         or the order of the components when concatenated.
 
+    randSeed : int
+        The seed for the random number generator used to determine the affected side in ambigous cases (e.g. healthy control)
+
+    randSeedVal : int
+        The seed for the random number generator used to select the validation set.
+
     ----------
     Raises:
     IOError : If one of the necessary files can not be found in the specified directory.
@@ -155,9 +161,9 @@ class DataFetcher(object):
         self.comp_order = comp_order
 
 
-    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False):
+    def fetch_data(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False, clip=False):
         """Reads and preprocesses all 5 force components for the specified dataset AND the test set.
-        Both the specified dataset and the test set are processed in the same manner.
+        Both the specified dataset and the test set are processed in the same manner, except that there will be no validation split created for the TEST set.
 
         Parameters:
         raw : bool, default=False
@@ -204,6 +210,10 @@ class DataFetcher(object):
         include_info : bool, default=False
             If True, additional information (e.g. SUBJECT_ID, SESSION_ID) is exported along with the data.
 
+        clip : bool, default=False
+            If True and scaler is of type 'MinMax', the dataset will be clipped to the range of the scaler.
+            This can be desirable in case of rounding errors, or if the scaler was fitted on different data.
+
         ----------
         Returns:
         train : dictionary containing at least the keys 'label', 'affected' and 'non_affected'.
@@ -211,7 +221,7 @@ class DataFetcher(object):
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
             If 'include_info' == True:
-                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
+                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) and all metadata information.
 
             If 'val_setp' > 0:
                 'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
@@ -233,13 +243,13 @@ class DataFetcher(object):
         if dataset not in ["TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
 
-        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat, val_setp, include_info)
-        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat, val_setp=None, include_info=include_info)
+        train = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, dataset, stepsize, averageTrials, scaler, concat, val_setp, include_info, clip)
+        test = self.fetch_set(raw, onlyInitial, dropOrthopedics, dropBothSidesAffected, "TEST", stepsize, averageTrials, scaler, concat, val_setp=None, include_info=include_info, clip=clip)
 
         return train, test
 
 
-    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False):
+    def fetch_set(self, raw=False, onlyInitial=False, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=None, concat=False, val_setp=0, include_info=False, clip=False):
         """Reads and preprocesses all 5 force components for the specified dataset.
 
         Parameters:
@@ -286,6 +296,10 @@ class DataFetcher(object):
         include_info : bool, default=False
             If True, additional information (e.g. SUBJECT_ID, SESSION_ID) is exported along with the data.
 
+        clip : bool, default=False
+            If True and scaler is of type 'MinMax', the dataset will be clipped to the range of the scaler.
+            This can be desirable in case of rounding errors, or if the scaler was fitted on different data (e.g. the TRAIN-set, and is now used on the TEST-set).
+
         ----------
         Returns:
         data : dictionary containing at least the keys 'label', 'affected' and 'non_affected'.
@@ -293,22 +307,22 @@ class DataFetcher(object):
             'affected': numpy array of float32 either num_samples x time_steps x 5 (last dimension are the force components) or num_samples x timesteps*5 (if concate=True).
             'non-affected': same as above but contains the data for the unaffected leg.
             If 'include_info' == True:
-                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
+                'info' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) and all metadata information.
 
             If 'val_setp' > 0:
                 'affected_val' numpy array of float32 same format as 'affected' but first dimension is num_samples * val_setp (contains the validation set).
                 'non_affected_val' same as above but contains the validation set for the unaffected leg.
                 'label_val': numpy array of integers containing the class labels for the validation set.
                 If 'include_info' == True:
-                    'info_val ' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) for the validation set.
+                    'info_val ' : pandas dataframe containing SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) and all metadata information for the validation set.
         
         ----------
         Raises:
         ValueError: If either 'dataset' or 'dropOrthopedics' are not within the valid range of data.
-
         ValueError: If a scaler is neither an instance of GRFScaler nor None.
+        ValueError: If clip=True and a scaler different with a different type than 'MinMax' is used (or no scaler is used at all).
         """
-        
+
         if dataset not in ["TEST", "TRAIN", "TRAIN_BALANCED"]:
             raise ValueError("Dataset {} does not exist. Please use one of 'TEST'/'TRAIN'/'TRAIN_BALANCED'.".format(dataset))
         if dropOrthopedics not in ["None", "Verified", "All"]:
@@ -321,7 +335,9 @@ class DataFetcher(object):
             metadata = _drop_both_sides_affected(metadata)
         metadata = _drop_orthopedics(metadata, dropOrthopedics)
 
-        metadata = _trim_metadata(metadata, keepNormParams=raw)
+        # keep information if it needs to be exported
+        if not include_info:
+            metadata = _trim_metadata(metadata, keepNormParams=raw)
         metadata = _select_dataset(metadata, dataset)
 
         left, right = self.__fetch_data(metadata, raw)
@@ -336,6 +352,10 @@ class DataFetcher(object):
             if not scaler.is_fitted():
                 _fit_scaler(scaler, (left, right))
 
+        if clip:
+            if scaler is None or scaler.get_type() != "minmax":
+                raise ValueError("Clipping can only take affect if the scaler is of type 'MinMax'. Please change clip to 'False' or choose a different scaler.")
+
         if scaler != None:
             left, right = [_scale(scaler, leg) for leg in (left, right)]
 
@@ -349,7 +369,11 @@ class DataFetcher(object):
             """
 
         affected, non_affected = self.__arrange_data(left, right, metadata)
-        data = self.__split_and_format(affected, non_affected, metadata, val_setp, include_info)
+
+        dataRange = None
+        if clip:
+            dataRange=scaler.get_featureRange()
+        data = self.__split_and_format(affected, non_affected, metadata, val_setp, include_info, dataRange)
        
         #TODO remove print
         print("Exported dataset with shape: {}".format(data["affected"].shape))
@@ -479,7 +503,7 @@ class DataFetcher(object):
         return {"concat": concat_series}
 
 
-    def __split_and_format(self, affected, non_affected, metadata, val_setp, include_info):
+    def __split_and_format(self, affected, non_affected, metadata, val_setp, include_info, dataRange):
         """Splits the provided data into values and labels.
         Values are formatted into single-precision numpy-arrays.
         Labels are transformed into integers (specified in 'class_dict').
@@ -503,12 +527,15 @@ class DataFetcher(object):
         include_info : bool
             Whether or not to include additional information in the returned dictionary.
 
+        DataRange : tuple of type (min, max)
+            Range of the data if clipping should be applied, None otherwise.
+
         ----------
         Returns:
         data : dictionary containing the keys 'label', 'affected' and 'non_affected' (plus 'affected_val' and 'non_affected_val' if 'val_set' is specified).
             Contains the labels (as integers) and the data for the affected/unaffected side (as float32).
             If 'include_info' is True, and 'info' (and 'info_val' if 'val_set' is specified) is added to the dictionary containing additional information
-            such as SUBJECT_ID, SESSION_ID and TRIAL_ID (if available).
+            such as SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) plus all metadata information available.
 
         ----------
         Raises:
@@ -535,12 +562,13 @@ class DataFetcher(object):
 
         if include_info:
             # just take the info from the first component because it is the same across all components
-            info = _get_info_part(affected[list(affected.keys())[0]])
-            data["info"] = info.reset_index(drop=True)
+            info = _get_info_part(affected[list(affected.keys())[0]]).reset_index(drop=True)
+            metadata_info = metadata.drop(columns=["SUBJECT_ID"]).set_index("SESSION_ID")
+            data["info"] = info.join(metadata_info, on="SESSION_ID").reset_index(drop=True)
 
         for component in affected:
-            affected_formatted[component] = _format_data(affected[component])
-            non_affected_formatted[component] = _format_data(non_affected[component])
+            affected_formatted[component] = _format_data(affected[component], dataRange)
+            non_affected_formatted[component] = _format_data(non_affected[component], dataRange)
 
         if "concat" in keys:
             data["affected"] = affected_formatted["concat"]
@@ -954,13 +982,16 @@ def _average_trials(data_dict):
     return avg_dict
 
 
-def _format_data(data):
+def _format_data(data, dataRange):
     """Removes all columns from the DataFrame that do not represent GRF-measurements.
     Comverts the DataFrame into a 'float32' numpy array.
 
     Parameters:
     data : DataFrame
         The data to be converted.
+
+    DataRange : tuple of type (min, max)
+            Range of the data if clipping should be applied, None otherwise.
 
     ----------
     Returns:
@@ -969,9 +1000,13 @@ def _format_data(data):
     """
 
     # only existing columns are dropped
-    data = data.drop(columns=["SUBJECT_ID", "SESSION_ID", "TRIAL_ID", "CLASS_LABEL", "AFFECTED_SIDE"], errors="ignore")       
+    data = data.drop(columns=["SUBJECT_ID", "SESSION_ID", "TRIAL_ID", "CLASS_LABEL", "AFFECTED_SIDE"], errors="ignore") 
+
+    data = data.astype('float32').values
+    if dataRange is not None:
+        data = np.clip(data, dataRange[0], dataRange[1])
     
-    return data.astype('float32').values
+    return data
 
 
 def _check_file(filename):
@@ -1045,7 +1080,7 @@ def _to_scaler_format(data_dict):
 
     formatted_data = {}
     for component in data_dict:
-        formatted_data[component] = _format_data(data_dict[component])
+        formatted_data[component] = _format_data(data_dict[component], None)
     return formatted_data
             
             
@@ -1146,8 +1181,265 @@ def _assert_scale(concat_data, scaler):
     if data_max > scaler_max:
         raise ValueError("Concatenation invalidated the range of the data {} > {}".format(data_min, scaler_min))
 
-    
 
+
+
+
+def set_valSet(data, filter_data, parse=False):
+    """Incase that a pre-defined validation set should be used (for example if it has been extracted previously), this function deletes all samples from data that correspond
+    to an entry in the validation-set of 'filter_data.' based on the 'SUBJECT_ID'.
+    There are two modes of operations: 
+    'parse' == False: The validation-of 'filter_data' should become the new validation-set of 'data'.
+    'parse' == True: The new validation set is parsed from 'data' based on the 'SESSION_ID' of the entries in the validation-set of 'filter_data'.
+    The last mode should be used if 'data' and 'filter_data' have a different format (e.g. averaged/non-averaged, sampled, etc.)
+
+    Parameters:
+    data : dict
+        Containing only the keys 'affected', 'non_affected', 'labels' and 'info'.
+    
+    filter_data : dict
+        Containing at least the key 'info_val'.
+
+    parser : bool, default=False,
+        Decides the mode of operation. If True the new validation-set is parsed from 'data'.
+        If False, the validation set from 'filter_data' is used.
+
+    ----------
+    Returns:
+    result :  dict
+        Same format as the input.
+        Additionally all entries with a 'SUBJECT_ID' corresponding to any of the ones passed in the validation set of 'filter_data' are removed.
+        The new validation-set is either the one of 'filter_data' or it is parsed from 'data' based on the entries of the validation-set in 'filter_data' 
+
+    ----------
+    Raises:
+    TypeError : If 'data' or 'filter_data' are not dictionaries.
+    ValueError : If the key 'info' does not exist in 'data'.
+    ValueError : If the key 'info_val' does not exist in 'filter_data'
+    ValueError : If a validation-set is already specified in 'data' (operation probably does not have the intended effect).
+    ValueError : If 'data' used the non_affected side but there is no corresponding validation-set available in 'filter_data'.
+    """
+
+    if type(data) is not dict:
+        raise TypeError("'Data' is not a dictionary.")
+    if type(filter_data) is not dict:
+        raise TypeError("'Filter_data' is not a dictionary.")
+    if "info" not in data.keys():
+        raise ValueError ("'Info' is not available in 'data', filter cannot be applied because information is missing.")
+    if "affected_val" in data.keys():
+        raise ValueError("Validation-Set is already specified in 'data', operation will not have the intended effect.")
+    if 'info_val' not in filter_data.keys():
+        raise ValueError("'Info_val' is not available in 'filter_data', filter cannot be applied because information is missing.")
+
+    not_in_val_set = ~data["info"]["SUBJECT_ID"].isin(filter_data["info_val"]["SUBJECT_ID"])
+    valid_indices = np.where(not_in_val_set.values)[0]
+
+    result = {}
+    result["info"] = data["info"][not_in_val_set]
+    for key in data.keys():
+        if key != "info":
+            result[key] = np.take(data[key], valid_indices, axis=0)
+
+    if parse:
+        new_val_set = data["info"]["SESSION_ID"].isin(filter_data["info_val"]["SESSION_ID"])
+        val_set_indices = np.where(new_val_set.values)[0]
+        
+        result["affected_val"] = np.take(data["affected"], val_set_indices, axis=0)
+        result["label_val"] = np.take(data["label"], val_set_indices, axis=0)
+        
+        if _isNonAffectedUsed(data, filter_data):
+            result["non_affected_val"] = np.take(data["non_affected"], val_set_indices, axis=0)
+        
+        result["info_val"] = data["info"][new_val_set]
+
+    else:
+        result["affected_val"] = filter_data["affected_val"]
+        result["label_val"] = filter_data["label_val"]
+        result["info_val"] = filter_data["info_val"]
+        
+        if _isNonAffectedUsed(data, filter_data):
+            result["non_affected_val"] = filter_data["non_affected_val"]
+
+    return result
+
+
+def _isNonAffectedUsed(data, filter_data):
+    """Verifies that if the data for the non_affected side is used in 'filter_data',
+    it is also available in 'data'.
+
+    ----------
+    Parameters:
+    data : dict
+        Containing GRF-data
+    
+    filter_data : dict
+        Containing GRF-data with a non-empty validation-set.
+
+    ----------
+    Returns:
+    bool : False if the data for the non_affected side is not available in 'filter_data'.
+           True if it is available in both 'data' and 'filter_data'.
+
+    ----------
+    Raises : ValueError : If 'data' used the non_affected side but there is no corresponding validation-set available in 'filter_data'.
+    """
+
+    if "non_affected" in data.keys():
+        if "non_affected_val" not in filter_data.keys():
+            raise ValueError("'Data' used information about the non-affected side, but 'filter-data' does not provide a validation-set for non-affected data.")
+        else:
+            return True
+    else:
+        return False
+
+
+
+# only maintained for compability issues
+def filter_out_val_set(data, filter_data):
+    """In case that the validation-set of another data-set should be used, this function filters out all the entried from data that correspond to an entry in the validation-set of 'filter_data',
+    based on the 'SUBJECT_ID'.
+
+    Parameters:
+    data : dict
+        Containing only the keys 'affected', 'non_affected', 'labels' and 'info'.
+    
+    filter_data : dict
+        Containing at least the key 'info_val'.
+
+    ----------
+    Returns:
+    result :  dict
+        Same format as the input but without the 'info' key.
+        Additionally all entries with a 'SUBJECT_ID' corresponding to any of the ones passed in the validation set of 'filter_data' are removed as well.
+        To ready the data-set for immediate use, the validation-set of 'filter_data' is added to 'data'.
+
+    ----------
+    Raises:
+    TypeError : If 'data' or 'filter_data' are not dictionaries.
+    ValueError : If the key 'info' does not exist in 'data'.
+    ValueError : If the key 'info_val' does not exist in 'filter_data'
+    ValueError : If a validation-set is already specified in 'data' (operation probably does not have the intended effect).
+    ValueError : If 'data' used the non_affected side but there is no corresponding validation-set available in 'filter_data'.
+    """
+
+    if type(data) is not dict:
+        raise TypeError("'Data' is not a dictionary.")
+    if type(filter_data) is not dict:
+        raise TypeError("'Filter_data' is not a dictionary.")
+    if "info" not in data.keys():
+        raise ValueError ("'Info' is not available in 'data', filter cannot be applied because information is missing.")
+    if "affected_val" in data.keys():
+        raise ValueError("Validation-Set is already specified in 'data', operation will not have the intended effect.")
+    if 'info_val' not in filter_data.keys():
+        raise ValueError("'Info_val' is not available in 'filter_data', filter cannot be applied because information is missing.")
+
+    not_in_val_set = ~data["info"]["SUBJECT_ID"].isin(filter_data["info_val"]["SUBJECT_ID"])
+    valid_indices = np.where(not_in_val_set.values)[0]
+
+    result = {}
+    for key in data.keys():
+        if key != "info":
+            result[key] = np.take(data[key], valid_indices, axis=0)
+            print(result[key].shape)
+
+    result["affected_val"] = filter_data["affected_val"]
+    result["label_val"] = filter_data["label_val"]
+    result["info_val"] = filter_data["info_val"]
+    if "non_affected" in data.keys():
+        if "non_affected_val" not in filter_data.keys():
+            raise ValueError("'Data' used information about the non-affected side, but 'filter-data' does not provide a validation-set for non-affected data.")
+        result["non_affected_val"] = filter_data["non_affected_val"]
+
+    return result
+
+#only maintained for compability issus
+def filter_out_subjects(data, info, class_dict, injury_classes=["HC", "H", "K", "A", "C"]):
+    """Filters out all data corresponding to any 'SUBJECT_ID' listed in 'info' from all datasets in data (i.e. 'affected', 'non_affected', 'label', 'affected_val', 'non_affected_val', 'label_val').
+    Additionally provides the option to filter out only patients with selected injuries as specified by injury_classes.
+    
+    Parameters:
+    data : dict
+        Containing at least the keys 'affected', 'labels' and 'info'.
+    
+    filter_data : pd.DataFrame
+        Containing the 'SUBJECT_ID' to remove. 
+
+    class_dict: dictionary
+        Containing the mapping of injury_classes within the data.
+
+    injury_classes : list, default=["HC", "H", "K", "A", "C"]
+        Containing the injury_classes contained in the final data_set
+
+    ----------
+    Returns:
+    result :  dict
+        Same format as the input but without the 'info' and 'info_val' key.
+        Additionally all entries with a 'SUBJECT_ID' corresponding to any of the ones passed in the validation set of 'info' are removed as well.
+
+    ----------
+    Raises:
+    TypeError : If 'data' is not a dictionary.
+    TypeError : If 'info' is not a pd.DataFrame.
+    TypeError : If 'injury_classes' is not a list.
+    ValueError : If the key 'info' (of 'info_val' if a val-set is specified) does not exist in 'data'.
+    ValueError : If the column 'SUBJECT_ID' does not exist in 'info'
+    """
+
+    if type(data) is not dict:
+        raise TypeError("'Data' is not a dictionary.")
+    if type(info) is not pd.DataFrame:
+        raise TypeError("'info' is not a pd.Dataframe.")
+    if type(injury_classes) is not list:
+        raise TypeError("'injury_classes' is not a list.")
+    if "info" not in data.keys():
+        raise ValueError ("'Info' is not available in 'data', filter cannot be applied because information is missing.")
+    if "affected_val" in data.keys() and "info_val" not in data.keys():
+        raise ValueError("'Info_val' is not available in 'data', filter cannot be applied because information is missing.")
+    if 'SUBJECT_ID' not in info.columns:
+        raise ValueError("'SUBJECT_ID' is not available in 'info', filter cannot be applied because information is missing.")
+
+    valid_data = ~data["info"]["SUBJECT_ID"].isin(info["SUBJECT_ID"])
+    valid_indices = np.where(valid_data.values)[0]
+
+    train_sets = ["affected", "label", "info"]
+    val_sets = ["affected_val", "label_val", "info_val"]
+    if "non_affected" in data.keys():
+        train_sets += ["non_affected"]
+        val_sets += ["non_affected_val"]
+    
+    result = {}
+    for key in train_sets:
+        result[key] = np.take(data[key], valid_indices, axis=0)
+
+    final_classes =[]
+    
+    for injury_class in injury_classes:
+        final_classes.append(class_dict.get(injury_class))
+
+    new_dict ={}
+    for key in injury_classes:
+        new_dict[key] = final_classes.index(class_dict.get(key))
+    
+    indices = np.where(np.isin(result["label"], final_classes))[0]
+    for key in train_sets:
+        result[key] = np.take(result[key], indices, axis=0)
+
+    if "affected_val" in data.keys():
+        valid_data = ~data["info_val"]["SUBJECT_ID"].isin(info["SUBJECT_ID"])
+        valid_indices = np.where(valid_data.values)[0]
+
+        for key in val_sets:
+            result[key] = np.take(data[key], valid_indices, axis=0)
+
+        indices = np.where(np.isin(result["label_val"], final_classes))[0]
+        for key in val_sets:
+            result[key] = np.take(result[key], indices, axis=0)
+
+    for key, value in new_dict.items():
+        result["label"][result["label"] == class_dict.get(key)] = value
+        result["label_val"][result["label_val"] == class_dict.get(key)] = value
+
+    return result, new_dict
 
 
 
