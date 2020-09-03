@@ -1185,13 +1185,15 @@ def _assert_scale(concat_data, scaler):
 
 
 
-def set_valSet(data, filter_data, parse=False):
+def set_valSet(data, filter_data, parse=None):
     """Incase that a pre-defined validation set should be used (for example if it has been extracted previously), this function deletes all samples from data that correspond
     to an entry in the validation-set of 'filter_data.' based on the 'SUBJECT_ID'.
-    There are two modes of operations: 
-    'parse' == False: The validation-of 'filter_data' should become the new validation-set of 'data'.
-    'parse' == True: The new validation set is parsed from 'data' based on the 'SESSION_ID' of the entries in the validation-set of 'filter_data'.
-    The last mode should be used if 'data' and 'filter_data' have a different format (e.g. averaged/non-averaged, sampled, etc.)
+    There are three modes of operations: 
+    'parse' == None: The validation-of 'filter_data' should become the new validation-set of 'data'.
+    'parse' == 'SESSION_ID': The new validation set is parsed from 'data' based on the 'SESSION_ID' of the entries in the validation-set of 'filter_data'.
+                             This will result in a new validation set that is identical to the one of 'filter_data' but uses the same format as 'data'
+    'parse' == 'SUBJECT_ID': The new validation set is parsed from 'data' based on the 'SUBJECT_ID' of the entries in the validation-set of 'filter_data'.
+                             Similar to 'SESSION_ID' but includes all values that were removed from 'data' (i.e. if a subject had multiple sessions in 'data' but only one in 'filter_data', all sessions will be moved to the new validation set). This is likely to result in a larger validation set than the original.
 
     Parameters:
     data : dict
@@ -1200,9 +1202,10 @@ def set_valSet(data, filter_data, parse=False):
     filter_data : dict
         Containing at least the key 'info_val'.
 
-    parser : bool, default=False,
-        Decides the mode of operation. If True the new validation-set is parsed from 'data'.
-        If False, the validation set from 'filter_data' is used.
+    parse : string, default=None,
+        Decides the mode of operation. If None, the validation set from 'filter_data' is used.
+        Otherwise the validation-set is parsed from 'data' with 'parse' defining the key to identify similar entries.
+        
 
     ----------
     Returns:
@@ -1218,6 +1221,7 @@ def set_valSet(data, filter_data, parse=False):
     ValueError : If the key 'info_val' does not exist in 'filter_data'
     ValueError : If a validation-set is already specified in 'data' (operation probably does not have the intended effect).
     ValueError : If 'data' used the non_affected side but there is no corresponding validation-set available in 'filter_data'.
+    ValueError : If 'parse' is neither of None, 'SUBJECT_ID' or 'SESSION_ID'.
     """
 
     if type(data) is not dict:
@@ -1230,6 +1234,9 @@ def set_valSet(data, filter_data, parse=False):
         raise ValueError("Validation-Set is already specified in 'data', operation will not have the intended effect.")
     if 'info_val' not in filter_data.keys():
         raise ValueError("'Info_val' is not available in 'filter_data', filter cannot be applied because information is missing.")
+    if parse is not None:
+        if parse not in ["SUBJECT_ID", "SESSION_ID"]:
+            raise ValueError("The parameter 'parse' must be one of the following: None, 'SUBJECT_ID' or 'SESSION_ID'.")
 
     not_in_val_set = ~data["info"]["SUBJECT_ID"].isin(filter_data["info_val"]["SUBJECT_ID"])
     valid_indices = np.where(not_in_val_set.values)[0]
@@ -1240,10 +1247,11 @@ def set_valSet(data, filter_data, parse=False):
         if key != "info":
             result[key] = np.take(data[key], valid_indices, axis=0)
 
-    if parse:
-        new_val_set = data["info"]["SESSION_ID"].isin(filter_data["info_val"]["SESSION_ID"])
+    if parse is not None:
+        new_val_set = data["info"][parse].isin(filter_data["info_val"][parse])
         val_set_indices = np.where(new_val_set.values)[0]
         
+        result["affected_val"] = np.take(data["affected"], val_set_indices, axis=0)
         result["affected_val"] = np.take(data["affected"], val_set_indices, axis=0)
         result["label_val"] = np.take(data["label"], val_set_indices, axis=0)
         
