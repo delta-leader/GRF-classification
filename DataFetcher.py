@@ -536,6 +536,7 @@ class DataFetcher(object):
             Contains the labels (as integers) and the data for the affected/unaffected side (as float32).
             If 'include_info' is True, and 'info' (and 'info_val' if 'val_set' is specified) is added to the dictionary containing additional information
             such as SUBJECT_ID, SESSION_ID and TRIAL_ID (if available) plus all metadata information available.
+            If DataRange is specified (i.e. not None), the data is clipped to the given range.
 
         ----------
         Raises:
@@ -997,6 +998,7 @@ def _format_data(data, dataRange):
     Returns:
         ndarray
         'float32' numpy array containing only data from the actual measurement.
+        If DataRange is specified (i.e. not None), the data is clipped to the given range.
     """
 
     # only existing columns are dropped
