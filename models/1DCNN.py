@@ -36,7 +36,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "1DCNN Sweep 1Layer",
+        "name": "1DCNN Sweep 2Layer",
         "method": "grid",
         "description": "Find the optimal number of layers/neurons",
         "metric": {
@@ -48,7 +48,12 @@ def create_sweep_config():
                 "value": 1
             },
             "filters0": {
-                "values": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+                "values": [10, 20, 30, 40, 50]
+                #"min": 40,
+                #"max": 190
+            },
+            "filters1": {
+                "values": [10, 20, 30, 40, 50]
                 #"min": 40,
                 #"max": 190
             },
@@ -62,6 +67,11 @@ def create_sweep_config():
             #    "max": 0.5
             #}
             "kernel0": {
+                "values": [(3), (5), (7), (9), (11), (13), (15)]
+                #"min": 40,
+                #"max": 190
+            },
+            "kernel1": {
                 "values": [(3), (5), (7), (9), (11), (13), (15)]
                 #"min": 40,
                 #"max": 190
@@ -182,10 +192,24 @@ def create_1DCNN(input_shape, config):
 
 
 def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
-    """Trains and tests the MLP.
+    """Trains and tests the 1DCNN.
     Two modes are available:
     'sweep' == True -> performs a sweep of hyperparameters according to the specified sweep-configuration.
-    'sweep' == False ->
+    'sweep' == False -> Performs a single training and evaluation (on test and validation set) according to the configured settings. Includes creationg of plots and confusion matrices.
+
+    Parameters:
+    train : dict
+        Containing the GRF-data for training and validation.
+    
+    test : dict, default=None
+        Containing the GRF-data for the test-set.
+    
+    class_dict: dict, default=None
+        Dictionary that maps the numbered labels to names. Used to create the confusion matrix.
+
+    seep : bool, default=False
+        If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
+        Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
       
     if sweep:

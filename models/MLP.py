@@ -132,7 +132,21 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
     """Trains and tests the MLP.
     Two modes are available:
     'sweep' == True -> performs a sweep of hyperparameters according to the specified sweep-configuration.
-    'sweep' == False ->
+    'sweep' == False -> Performs a single training and evaluation (on test and validation set) according to the configured settings. Includes creationg of plots and confusion matrices.
+
+    Parameters:
+    train : dict
+        Containing the GRF-data for training and validation.
+    
+    test : dict, default=None
+        Containing the GRF-data for the test-set.
+    
+    class_dict: dict, default=None
+        Dictionary that maps the numbered labels to names. Used to create the confusion matrix.
+
+    seep : bool, default=False
+        If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
+        Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
       
     if sweep:
