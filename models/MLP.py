@@ -11,7 +11,6 @@ from ModelTester import ModelTester, resetRand
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Dropout, BatchNormalization
-#from tensorflow.keras.optimizers import Adam
 
 
 def wandb_init():
@@ -44,23 +43,52 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
+            #"layers": {
+            #    "value": 1
+            #},
+            #"layer1_neurons": {
+            #    "distribution": "int_uniform",
+            #    "min": 40,
+            #    "max": 190
+            #},
+            #"batch_normalization": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"dropout": {
+            #    "distribution": "uniform",
+            #    "min": 0.1,
+            #    "max": 0.5
+            #}
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.01
+                "max": 0.0001
             },
-            "layer1_neurons": {
-                "distribution": "int_uniform",
-                "min": 40,
-                "max": 190
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.6
+                "max": 0.99
             },
-            "batch_normalization": {
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.7
+                "max": 0.999
+            },
+            "amsgrad":{
                 "distribution": "categorical",
                 "values": [True, False]
             },
-            "dropout": {
-                "distribution": "uniform",
-                "min": 0.1,
-                "max": 0.5
-            }
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20
+                "max": 300
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 16
+                "max": 512
+            },
         }
     }
 
@@ -72,15 +100,19 @@ def create_config():
 
     config = {
         "layers": 1,
-        "layer1_neurons": 100,
+        "layer1_neurons": 190,
         "layer2_neurons": 50,
         "layer3_neurons": 50,
-        "batch_normalization": True,
-        "dropout": 0.3,
+        "batch_normalization": False,
+        "dropout": None,
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
+        "learning_rate": 0.001,
+        "beta_1": 0.9,
+        "beta_2": 0.999,
+        "amsgrad": False,
         "batch_size": 32,
         "epochs": 100
     }
@@ -157,6 +189,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
             config = wandb_init()
             resetRand()
             model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
+            optimizer = config.optimizer
             tester.perform_sweep(model, config, train, shape="1D", useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")

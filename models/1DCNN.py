@@ -11,7 +11,6 @@ from ModelTester import ModelTester, create_heatmap, resetRand
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Dense, Flatten, Dropout, BatchNormalization, SeparableConv1D, concatenate
-#from tensorflow.keras.optimizers import Adam
 
 
 def wandb_init():
@@ -36,7 +35,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "1DCNN Sweep 2Layer",
+        "name": "1DCNN Sweep 1Layer",
         "method": "grid",
         "description": "Find the optimal number of layers/neurons",
         "metric": {
@@ -52,11 +51,11 @@ def create_sweep_config():
                 #"min": 40,
                 #"max": 190
             },
-            "filters1": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
-            },
+            #"filters1": {
+            #    "values": [10, 20, 30, 40, 50]
+            #    #"min": 40,
+            #    #"max": 190
+            #},
             #"batch_normalization": {
             #    "distribution": "categorical",
             #    "values": [True, False]
@@ -71,11 +70,11 @@ def create_sweep_config():
                 #"min": 40,
                 #"max": 190
             },
-            "kernel1": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
-            },
+            #"kernel1": {
+            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
+            #    #"min": 40,
+            #    #"max": 190
+            #},
         }
     }
 
@@ -105,8 +104,8 @@ def create_config():
         "mlp_neurons": 50,
         "cnn_dropout": None,
         "mlp_dropout": None,
-        "separable": True,
-        "skipConnections": True,
+        "separable": False,
+        "skipConnections": False,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",

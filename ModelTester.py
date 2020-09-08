@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.utils import to_categorical
 from scipy import stats
 from tensorflow.keras.utils import plot_model
+from tensorflow.keras.optimizers import Adam
 import wandb
 from wandb.keras import WandbCallback
 
@@ -25,6 +26,34 @@ def resetRand(seed=1):
     tfrand.set_seed(seed)
     np.random.seed(seed)
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
+
+
+def configure_optimizer(config):
+    """Sets up and configures a keras.optimizer according to the specifications in 'config'
+
+    Parameters:
+    config : wandb.config or namedtuple
+        Contains the configuration for the optimizer.
+
+    ----------
+    Returns:
+    optimzer : keras.optimizer
+        The configured optimizer.
+
+    ----------
+    Raises:
+    ValueError : If optimizer specified is not supported by this function.
+    """
+
+    optimizer = None
+
+    if config.optimizer == "adam":
+        optimizer = Adam(learning_rate=config.learning_rate, beta_1=config.beta_1, beta_2=config.beta_2, amsgrad=config.amsgrad)
+    
+    if optimizer is None:
+        raise ValueError("Optimizer '{}' is not supported, please specify a different one.")
+    else:
+        return optimizer
 
 
 class ModelTester(object):
@@ -140,7 +169,7 @@ class ModelTester(object):
         # get default values
         loss, metrics = self.__check_for_default(loss, metrics)
 
-        model.compile(optimizer=config.optimizer, loss=loss, metrics=metrics)
+        model.compile(optimizer=configure_optimizer(config), loss=loss, metrics=metrics)
         model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[WandbCallback(monitor='val_accuracy')])
 
 
@@ -328,7 +357,7 @@ class ModelTester(object):
         loss, metrics = self.__check_for_default(loss, metrics)
 
         # Log settings
-        model.compile(optimizer=config.optimizer, loss=loss, metrics=metrics)
+        model.compile(optimizer=configure_optimizer(config), loss=loss, metrics=metrics)
         logfile = open(self.filepath + logfile, "a")
         logfile.write(model_name + ":\n")
         logfile.write("Optimizer: {}, Loss: {}, Metrics: {}\n".format(config.optimizer, loss, metrics))
