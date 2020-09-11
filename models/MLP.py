@@ -98,7 +98,7 @@ def create_config():
         "optimizer": "adam",
         "learning_rate": 0.001,
         "beta_1": 0.9,
-        "beta_2": 0.990,
+        "beta_2": 0.999,
         "epsilon": 1e-07,
         "amsgrad": False,
         "batch_size": 32,
