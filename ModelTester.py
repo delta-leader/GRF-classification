@@ -75,12 +75,9 @@ class ModelTester(object):
         The filepath to the location where the output should be stored (e.g. plots and logfiles).
     """
 
-    def __init__(self, optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"], epochs=100, batch_size=32, class_dict={"HC":0, "H":1, "K":2, "A":3, "C":4}, filepath="output/"):
-        self.optimizer = optimizer
+    def __init__(self, loss="categorical_crossentropy", metrics=["accuracy"], class_dict={"HC":0, "H":1, "K":2, "A":3, "C":4}, filepath="output/"):
         self.loss = loss
         self.metrics = metrics
-        self.epochs = epochs
-        self.batch_size = batch_size
         self.class_dict = class_dict
         if filepath[-1] != "/":
             filepath += "/"
@@ -122,6 +119,8 @@ class ModelTester(object):
             - '2D_TS1' : Input for 2D convolution (with a single channel), time_steps x signals x 1
             - '2D_T1S' : Input for 2D convolution (with height=1, i.e. actually 1-dimensional), time_steps x 1 x signals
             - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
+            - '2D_TLS' : time_steps x 2 x 5 (only possible when useNonAffected is True, arranges the channels in two rows, first affected, than non_affected)
+            - '2D_TSL': time_steps x 5 x 2 (only possible when useNonAffected is True, arranges the channels in two columns, first affected, than non_affected)
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for the sweep.
@@ -184,6 +183,8 @@ class ModelTester(object):
             - '2D_TS1' : Input for 2D convolution (with a single channel), time_steps x signals x 1
             - '2D_T1S' : Input for 2D convolution (with height=1, i.e. actually 1-dimensional), time_steps x 1 x signals
             - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
+            - '2D_TLS' : time_steps x 2 x 5 (only possible when useNonAffected is True, arranges the channels in two rows, first affected, than non_affected)
+            - '2D_TSL': time_steps x 5 x 2 (only possible when useNonAffected is True, arranges the channels in two columns, first affected, than non_affected)
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for training and testing.
@@ -828,6 +829,8 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     'shape' == '2D_TS1' : Data format is not changed (i.e. time-steps x signals), but a third dimension is added for the channels to meet the format keras expects (i.e. time-steps x signals x 1).
     'shape' == '2D_T1S' : Data format is changed to contain a new dimension in the middle (i.e. time-steps x 1 x channels).
     'shape' == '2D_SST' : Data format is changed to that the first two dimensions correspond to the signals an the last is the time (i.e. 2 x 5 x time-steps). Only valid if data for the non-affected side is used.
+    'shape' == '2D_TLS' : Data format is changed to that the first dimension is time, the second is the leg and the last is the signals (i.e. time-steps x 2 x 5). Only valid if data for the non-affected side is used.
+    'shape' == '2D_TSL' : Data format is changed to that the first dimension is time, the second is the signals and the last is the leg (i.e. time-steps x 5 x 2). Only valid if data for the non-affected side is used.
 
     Parameters:
     data_dict : dictionary
@@ -841,7 +844,7 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
 
     shape : string
         Specifies the purpose of the output shape.
-        Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D)
+        Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D, '2D_TLS' & '2D_TSL' used for comparison in 2DCNN)
 
     ----------
     Returns:
@@ -851,11 +854,11 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     ----------
     Raises:
     ValueError : If shape is not one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.
-    ValueError : If shape is '2D_SST' and useNonAffected is False (can not arrange the channels in 2 dimensions in such a case).
+    ValueError : If shape is '2D_SST', '2D_TLS' or '2D_TSL' and useNonAffected is False (can not arrange the channels in 2 dimensions in such a case).
     """
 
-    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST"]:
-        raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.".format(shape))
+    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST", "2D_TLS", "2D_TSL"]:
+        raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S', '2D_SST' '2D_TLS' or '2DTSL'.".format(shape))
 
     val_suffix = ""
     if val_set:
@@ -868,13 +871,19 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
 
     data = data_dict["affected"+val_suffix]
 
-    if shape == "2D_SST":
+    if shape in ["2D_SST", "2D_TLS", "2D_TSL"]:
         if not useNonAffected:
             raise ValueError("Shape '2DSST' can only be applied if the data from the non-affected side is used.")
-        else:
+        
+        if shape == "2D_SST":
             data = np.stack([data, data_dict["non_affected"+val_suffix]], axis=1)
             data = np.swapaxes(data, -2, -1)
-            return data
+        if shape == "2D_TLS":
+            data = np.stack([data, data_dict["non_affected"+val_suffix]], axis=2)
+        if shape == "2D_TSL":
+            data = np.stack([data, data_dict["non_affected"+val_suffix]], axis=-1)
+  
+        return data
 
     if useNonAffected:
         data = np.concatenate([data, data_dict["non_affected"+val_suffix]], axis=-1)
@@ -883,7 +892,7 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
         data = np.expand_dims(data, axis=-1)
 
     if shape == "2D_T1S":
-        data = np.expand_dims(test_data, axis=-2)
+        data = np.expand_dims(data, axis=-2)
 
     return data
 

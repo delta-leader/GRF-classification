@@ -369,21 +369,21 @@ def validate_model(train, model="1D", test=None, class_dict=None, sweep=False):
         sweep_config = create_sweep_config()
         tester = ModelTester(class_dict=class_dict) 
 
-        def train_MLP():
+        def trainNN():
             config = wandb_init(model_config)
             resetRand()
             model = create_model(input_shape=input_shape, config=config)
             tester.perform_sweep(model, config, train, shape=shape, useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
-        wandb.agent(sweep_id, function=train_MLP)
+        wandb.agent(sweep_id, function=trainNN)
     
     else:
         filepath = "./output/Alharthi/" + model
         #filepath = "models/output/MLP/WandB/Alharthi"
         config = model_config
         config = namedtuple("Config", config.keys())(*config.values())
-        tester = ModelTester(filepath=filepath, optimizer=config.optimizer, class_dict=class_dict)
+        tester = ModelTester(filepath=filepath, class_dict=class_dict)
         resetRand()
         model = create_model(input_shape=input_shape, config=config)
         tester.save_model_plot(model, "Alharthi_2D.png")
