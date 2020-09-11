@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "MLP Sweep 1Layer - Dropout&BN testing",
+        "name": "MLP Sweep 1Layer",
         "method": "grid",
         "description": "Find the optimal number of layers/neurons",
         "metric": {
@@ -33,11 +33,11 @@ def create_sweep_config():
             #"layers": {
             #    "value": 1
             #},
-            #"neurons0": {
-            #    "distribution": "int_uniform",
+            "neurons0": {
+                "values": [i*10 for i in range(1,50)],
             #    "min": 40,
             #    "max": 190
-            #},
+            },
             #"batch_normalization": {
             #    "distribution": "categorical",
             #    "values": [True, False]
@@ -66,10 +66,6 @@ def create_sweep_config():
             #    "distribution": "categorical",
             #    "values": [True, False]
             #},
-            "identical":{
-                "distribution": "categorical",
-                "values": [True, False]
-            },
             #"epochs":{
             #    "distribution": "int_uniform",
             #    "min": 20,
@@ -100,13 +96,13 @@ def create_config():
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.006078,
-        "beta_1": 0.7692,
-        "beta_2": 0.7508,
+        "learning_rate": 0.001,
+        "beta_1": 0.9,
+        "beta_2": 0.990,
         "epsilon": 1e-07,
         "amsgrad": False,
-        "batch_size": 404,
-        "epochs": 299
+        "batch_size": 32,
+        "epochs": 100
     }
 
     return config
@@ -181,7 +177,8 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=train_MLP)
     
     else:
-        filepath = "models/output/MLP/WandB/Test"
+        filepath = "./output/MLP"
+        #filepath = "models/output/MLP/WandB/Test"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, optimizer=config.optimizer, class_dict=class_dict)
@@ -447,7 +444,8 @@ def test_Conv2DModel(train, test, class_dict):
 
 """
 if __name__ == "__main__":
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../.."
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
