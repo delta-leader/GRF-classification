@@ -28,32 +28,21 @@ def resetRand(seed=1):
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
 
-def configure_optimizer(config):
-    """Sets up and configures a keras.optimizer according to the specifications in 'config'
+def wandb_init(config):
+    """Initalizes the W&B init() call and returns the created configuration file.
 
     Parameters:
-    config : wandb.config or namedtuple
-        Contains the configuration for the optimizer.
+    config: dict
+        Dictionary containing the desired configurations.
 
     ----------
     Returns:
-    optimzer : keras.optimizer
-        The configured optimizer.
-
-    ----------
-    Raises:
-    ValueError : If optimizer specified is not supported by this function.
+    config: wandb.config
+        The configuration file to be used.
     """
 
-    optimizer = None
-
-    if config.optimizer == "adam":
-        optimizer = Adam(learning_rate=config.learning_rate, beta_1=config.beta_1, beta_2=config.beta_2, amsgrad=config.amsgrad)
-    
-    if optimizer is None:
-        raise ValueError("Optimizer '{}' is not supported, please specify a different one.")
-    else:
-        return optimizer
+    wandb.init(project="diplomarbeit", config=config)
+    return wandb.config
 
 
 class ModelTester(object):
@@ -169,7 +158,7 @@ class ModelTester(object):
         # get default values
         loss, metrics = self.__check_for_default(loss, metrics)
 
-        model.compile(optimizer=configure_optimizer(config), loss=loss, metrics=metrics)
+        model.compile(optimizer=_configure_optimizer(config), loss=loss, metrics=metrics)
         model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[WandbCallback(monitor='val_accuracy')])
 
 
@@ -357,7 +346,7 @@ class ModelTester(object):
         loss, metrics = self.__check_for_default(loss, metrics)
 
         # Log settings
-        model.compile(optimizer=configure_optimizer(config), loss=loss, metrics=metrics)
+        model.compile(optimizer=_configure_optimizer(config), loss=loss, metrics=metrics)
         logfile = open(self.filepath + logfile, "a")
         logfile.write(model_name + ":\n")
         logfile.write("Optimizer: {}, Loss: {}, Metrics: {}\n".format(config.optimizer, loss, metrics))
@@ -386,7 +375,7 @@ class ModelTester(object):
 
         # Plot accuracy and loss
         if create_plot or show_plot:
-            self.__plot(train_history.history, plot_name, create_plot, show_plot)
+            self.__plot(train_history.history, plot_name, create_plot, show_plot, config.epochs)
 
         # Confusion Matrix for validation-set
         predicted_labels = np.argmax(model.predict(val_data, batch_size=config.batch_size), axis=1)
@@ -632,7 +621,7 @@ class ModelTester(object):
 
         # Plot accuracy and loss
         if create_plot or show_plot:
-            self.__plot(train_history.history, plot_name, create_plot, show_plot)
+            self.__plot(train_history.history, plot_name, create_plot, show_plot, config.epochs)
 
         # Confusion Matrix for validation-set
         predicted_labels = np.argmax(model.predict(val_data, batch_size=batch_size), axis=1)
@@ -686,7 +675,7 @@ class ModelTester(object):
         return accuracy, loss, val_accuracy, val_loss
 
 
-    def __plot(self, history, plot_name, save, show):
+    def __plot(self, history, plot_name, save, show, xlimit):
         """Creates the corresponding plots to a training history.
         Saves or displays (or both) the plots depending on the settings.
 
@@ -702,6 +691,9 @@ class ModelTester(object):
 
         show : bool
             If True the plot is immediately displayed.
+
+        xlimit : int
+            Range limit for the x-axis.
         """
 
         filename, ending = plot_name.split(".")
@@ -712,6 +704,7 @@ class ModelTester(object):
         plt.title("Model Accuracy")
         plt.xlabel("Epoch")
         plt.ylabel("Accuracy")
+        plt.xlim(0, xlimit)
         plt.legend(["train", "validation"], loc="upper left")
 
         if save:
@@ -727,6 +720,7 @@ class ModelTester(object):
         plt.title("Model Loss")
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
+        plt.xlim(0, xlimit)
         plt.legend(["train", "validation"], loc="upper right")
 
         if save:
@@ -872,6 +866,35 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
             data = np.concatenate([data, data_dict["non_affected"+val_suffix]], axis=-1)
 
     return data
+
+
+def _configure_optimizer(config):
+    """Sets up and configures a keras.optimizer according to the specifications in 'config'
+
+    Parameters:
+    config : wandb.config or namedtuple
+        Contains the configuration for the optimizer.
+
+    ----------
+    Returns:
+    optimzer : keras.optimizer
+        The configured optimizer.
+
+    ----------
+    Raises:
+    ValueError : If optimizer specified is not supported by this function.
+    """
+
+    optimizer = None
+
+    if config.optimizer == "adam":
+        optimizer = Adam(learning_rate=config.learning_rate, beta_1=config.beta_1, beta_2=config.beta_2, epsilon=config.epsilon, amsgrad=config.amsgrad)
+    
+    if optimizer is None:
+        raise ValueError("Optimizer '{}' is not supported, please specify a different one.")
+    else:
+        return optimizer
+
 
 
 

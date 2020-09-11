@@ -6,24 +6,11 @@ from collections import namedtuple
 
 from DataFetcher import DataFetcher, set_valSet
 from GRFScaler import GRFScaler
-from ModelTester import ModelTester, resetRand
+from ModelTester import ModelTester, resetRand, wandb_init
 
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Dropout, BatchNormalization
-
-
-def wandb_init():
-    """Initalizes the W&B init() call and returns the created configuration file.
-
-    ----------
-    Returns:
-    config: wandb.config
-        The configuration file to be used.
-    """
-
-    wandb.init(project="diplomarbeit", config=create_config())
-    return wandb.config
 
 
 def create_sweep_config():
@@ -46,7 +33,7 @@ def create_sweep_config():
             #"layers": {
             #    "value": 1
             #},
-            #"layer1_neurons": {
+            #"neurons0": {
             #    "distribution": "int_uniform",
             #    "min": 40,
             #    "max": 190
@@ -62,17 +49,17 @@ def create_sweep_config():
             #}
             "learning_rate":{
                 "distribution": "uniform",
-                "min": 0.01
-                "max": 0.0001
+                "min": 0.0001,
+                "max": 0.01
             },
             "beta_1":{
                 "distribution": "uniform",
-                "min": 0.6
+                "min": 0.6,
                 "max": 0.99
             },
             "beta_2":{
                 "distribution": "uniform",
-                "min": 0.7
+                "min": 0.7,
                 "max": 0.999
             },
             "amsgrad":{
@@ -81,12 +68,12 @@ def create_sweep_config():
             },
             "epochs":{
                 "distribution": "int_uniform",
-                "min": 20
+                "min": 20,
                 "max": 300
             },
             "batch_size":{
                 "distribution": "int_uniform",
-                "min": 16
+                "min": 16,
                 "max": 512
             },
         }
@@ -100,9 +87,9 @@ def create_config():
 
     config = {
         "layers": 1,
-        "layer1_neurons": 190,
-        "layer2_neurons": 50,
-        "layer3_neurons": 50,
+        "neurons0": 190,
+        "neurons1": 50,
+        "neurons2": 50,
         "batch_normalization": False,
         "dropout": None,
         "activation": "relu",
@@ -112,6 +99,7 @@ def create_config():
         "learning_rate": 0.001,
         "beta_1": 0.9,
         "beta_2": 0.999,
+        "epsilon": 1e-07,
         "amsgrad": False,
         "batch_size": 32,
         "epochs": 100
@@ -143,18 +131,12 @@ def create_MLP(input_shape, config):
             model.add(BatchNormalization())
         if config.dropout is not None:
             model.add(Dropout(rate=config.dropout))
-        return model
     
     # add layers
-    model.add(Dense(config.layer1_neurons, activation=config.activation, kernel_regularizer=config.regularizer))
-    finish_layer(model, config)
-    if config.layers > 1:
-        model.add(Dense(config.layer2_neurons, activation=config.activation, kernel_regularizer=config.regularizer))
+    for layer in range(config.layers):
+        model.add(Dense(getattr(config, "neurons{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer))
         finish_layer(model, config)
-    if config.layers > 2:
-        model.add(Dense(config.layer3_neurons, activation=config.activation, kernel_regularizer=config.regularizer))
-        finish_layer(model, config)
-    
+
     model.add(Dense(5, activation=config.final_activation, kernel_regularizer=config.regularizer))
     
     return model
@@ -176,7 +158,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
     class_dict: dict, default=None
         Dictionary that maps the numbered labels to names. Used to create the confusion matrix.
 
-    seep : bool, default=False
+    sweep : bool, default=False
         If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
         Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
@@ -186,10 +168,9 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         tester = ModelTester(class_dict=class_dict) 
 
         def train_MLP():
-            config = wandb_init()
+            config = wandb_init(create_config())
             resetRand()
             model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
-            optimizer = config.optimizer
             tester.perform_sweep(model, config, train, shape="1D", useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
@@ -203,7 +184,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
         tester.save_model_plot(model, "MLP_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="MLP_1L_N100.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N100.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="MLP_1L_N190.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N190.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 #TODO remove
@@ -467,6 +448,6 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
 
-    validate_MLP(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_MLP(train, sweep=False, class_dict=fetcher.get_class_dict())
 
    

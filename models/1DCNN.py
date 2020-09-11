@@ -6,24 +6,11 @@ from collections import namedtuple
 
 from DataFetcher import DataFetcher, set_valSet
 from GRFScaler import GRFScaler
-from ModelTester import ModelTester, create_heatmap, resetRand
+from ModelTester import ModelTester, create_heatmap, resetRand, wandb_init
 
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Dense, Flatten, Dropout, BatchNormalization, SeparableConv1D, concatenate
-
-
-def wandb_init():
-    """Initalizes the W&B init() call and returns the created configuration file.
-
-    ----------
-    Returns:
-    config: wandb.config
-        The configuration file to be used.
-    """
-
-    wandb.init(project="diplomarbeit", config=create_config())
-    return wandb.config
 
 
 def create_sweep_config():
@@ -89,9 +76,9 @@ def create_config():
         "filters0": 32,
         "filters1": 32,
         "filters2": 32,
-        "kernel0": (8),
-        "kernel1": (5),
-        "kernel2": (3),
+        "kernel0": 8,
+        "kernel1": 5,
+        "kernel2": 3,
         "stride0": 1,
         "stride1": 1,
         "stride2": 1,
@@ -134,7 +121,6 @@ def create_1DCNN(input_shape, config):
     
     #model = Sequential()
     #model.add(Input(shape=input_shape))
-    print(input_shape)
     input_layer = Input(shape=input_shape)
 
     # adds BatchNormalization, MaxPooling & Dropout if specified
@@ -206,7 +192,7 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
     class_dict: dict, default=None
         Dictionary that maps the numbered labels to names. Used to create the confusion matrix.
 
-    seep : bool, default=False
+    sweep : bool, default=False
         If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
         Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
@@ -216,7 +202,7 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
         tester = ModelTester(class_dict=class_dict) 
 
         def train_MLP():
-            config = wandb_init()
+            config = wandb_init(create_config)
             resetRand()
             model = create_1DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
             tester.perform_sweep(model, config, train, shape="1D", useNonAffected=True)
