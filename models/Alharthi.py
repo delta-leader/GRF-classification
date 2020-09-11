@@ -24,7 +24,7 @@ def create_sweep_config():
     sweep_config = {
         "name": "Alharthi1D - Hyperparameters",
         "method": "bayes",
-        "description": "Find the optimal number of layers/neurons",
+        "description": "Find the optimal hyperparameters",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
@@ -65,8 +65,8 @@ def create_sweep_config():
             },
             "epsilon":{
                 "distribution": "uniform",
-                "min": 1e-06,
-                "max": 1e-08
+                "min": 1e-08,
+                "max": 1e-06
             },
             "amsgrad":{
                 "distribution": "categorical",
@@ -226,7 +226,8 @@ def validate_model(train, model="1D", test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=train_MLP)
     
     else:
-        filepath = "models/output/MLP/WandB/Alharthi"
+        filepath = "./output/Alharthi/" + model
+        #filepath = "models/output/MLP/WandB/Alharthi"
         config = model_config
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, optimizer=config.optimizer, class_dict=class_dict)
@@ -937,10 +938,11 @@ def test_LSTM(train, test, optimizer, class_dict):
 
 
 if __name__ == "__main__":
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../.."
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
-    train, test = fetcher.fetch_data(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
     #optimizer = Adam(learning_rate=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 
     #test_1ConvLayer(train, test, optimizer, fetcher.get_class_dict())
