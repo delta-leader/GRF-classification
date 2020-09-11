@@ -450,6 +450,6 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
 
-    validate_MLP(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_MLP(train, sweep=True, class_dict=fetcher.get_class_dict())
 
    
