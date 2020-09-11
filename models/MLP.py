@@ -22,8 +22,8 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "MLP Sweep 1Layer - Dropout&BN",
-        "method": "bayes",
+        "name": "MLP Sweep 1Layer - Dropout&BN testing",
+        "method": "grid",
         "description": "Find the optimal number of layers/neurons",
         "metric": {
             "name": "val_accuracy",
@@ -47,35 +47,39 @@ def create_sweep_config():
             #    "min": 0.1,
             #    "max": 0.5
             #}
-            "learning_rate":{
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.01
-            },
-            "beta_1":{
-                "distribution": "uniform",
-                "min": 0.6,
-                "max": 0.99
-            },
-            "beta_2":{
-                "distribution": "uniform",
-                "min": 0.7,
-                "max": 0.999
-            },
-            "amsgrad":{
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.7,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            "identical":{
                 "distribution": "categorical",
                 "values": [True, False]
             },
-            "epochs":{
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 300
-            },
-            "batch_size":{
-                "distribution": "int_uniform",
-                "min": 16,
-                "max": 512
-            },
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 300
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 16,
+            #    "max": 512
+            #},
         }
     }
 
@@ -96,13 +100,13 @@ def create_config():
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.001,
-        "beta_1": 0.9,
-        "beta_2": 0.999,
+        "learning_rate": 0.006078,
+        "beta_1": 0.7692,
+        "beta_2": 0.7508,
         "epsilon": 1e-07,
         "amsgrad": False,
-        "batch_size": 32,
-        "epochs": 100
+        "batch_size": 404,
+        "epochs": 299
     }
 
     return config
@@ -184,7 +188,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
         tester.save_model_plot(model, "MLP_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="MLP_1L_N190.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N190.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="MLP_1L_N58.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N58.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 #TODO remove
