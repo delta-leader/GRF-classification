@@ -119,8 +119,9 @@ class ModelTester(object):
             Specifies how to extract the GRF-data from the dictionary.
             Options are:
             - '1D' : Input for 1D convolution or MLP. The data is concatenated along the last dimension (i.e. the input shape is identical to the output shape except that the last dimension will be twice as long if data from the non_affected side is used).
-            TODO
-            - '2D' : 2 x 5 x time_steps (only possible when useNonAffected is True)
+            - '2D_TS1' : Input for 2D convolution (with a single channel), time_steps x signals x 1
+            - '2D_T1S' : Input for 2D convolution (with height=1, i.e. actually 1-dimensional), time_steps x 1 x signals
+            - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for the sweep.
@@ -137,18 +138,15 @@ class ModelTester(object):
         Raises:
         TypeError : If 'train' is not a dicitionary.
         ValueError : If one of the necessary keys is not available in the dictionaries.
+        ValueError : If shape is '2D_SST' and the non-affected data is not used.
         TODO
-        ValueError : If shape is not '1D' and non-affected data is not used.
         ValueError : If 'groups' is not one of [1, 2].
         ValueError : If 'groups' > 1 and non-affected data is not used.
         """
 
         if not isinstance(train, dict):
             raise TypeError("Training-data was not provided as a dictionary.")
-
-        if shape != "1D" and not useNonAffected:
-            raise ValueError("Using a 2 dimensional shape requieres the usage of both legs.")
-        
+       
         # verify that all necessary datasets are there
         _check_keys(train, useNonAffected, True)
 
@@ -182,8 +180,10 @@ class ModelTester(object):
         shape : string, default='1D'
             Specifies how to extract the GRF-data from the dictionary.
             Options are:
-            - '1D' : time_steps x signals (either 5 or 10 if both sides are used)
-            - '2D' : 2 x 5 x time_steps (only possible when useNonAffected is True)
+            - '1D' : Input for 1D convolution or MLP. The data is concatenated along the last dimension (i.e. the input shape is identical to the output shape except that the last dimension will be twice as long if data from the non_affected side is used).
+            - '2D_TS1' : Input for 2D convolution (with a single channel), time_steps x signals x 1
+            - '2D_T1S' : Input for 2D convolution (with height=1, i.e. actually 1-dimensional), time_steps x 1 x signals
+            - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for training and testing.
@@ -232,7 +232,7 @@ class ModelTester(object):
         Raises:
         TypeError : If 'data_dict' or 'test_dict' are no dictionaries.
         ValueError : If one of the necessary keys is not available in one of the dictionaries.
-        ValueError : If shape is not '1D' and non-affected data is not used.
+        ValueError : If shape is '2D_SST' and the non-affected data is not used.
         ValueError : If 'groups' is not one of [1, 2].
         ValueError : If 'groups' > 1 and non-affected data is not used.
         """
@@ -241,8 +241,6 @@ class ModelTester(object):
             raise TypeError("Training-data was not provided as a dictionary.")
         
         """TODO
-        if shape != "1D" and not useNonAffected:
-            raise ValueError("Using a 2 dimensional shape requieres the usage of both legs.")
         
         if groups not in [1, 2]:
             raise ValueError("Unsupported value for 'groups' ({}) please use one of {}.".format(groups, [1, 2]))
@@ -827,7 +825,9 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     If 'usNonAffected' is true the data for the non_affected side is added according to the argument specified in 'shape'
     Possible modes are:
     'shape' == '1D' : Data format is not changed (i.e. either time-steps or time-steps x signals for the non concatenated case). Non_affected data is appended along the last axis.
-    TODO
+    'shape' == '2D_TS1' : Data format is not changed (i.e. time-steps x signals), but a third dimension is added for the channels to meet the format keras expects (i.e. time-steps x signals x 1).
+    'shape' == '2D_T1S' : Data format is changed to contain a new dimension in the middle (i.e. time-steps x 1 x channels).
+    'shape' == '2D_SST' : Data format is changed to that the first two dimensions correspond to the signals an the last is the time (i.e. 2 x 5 x time-steps). Only valid if data for the non-affected side is used.
 
     Parameters:
     data_dict : dictionary
@@ -841,14 +841,21 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
 
     shape : string
         Specifies the purpose of the output shape.
-        Possible values are ('1D' - used for 1DCNN, MLP)
-    TODO
+        Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D)
 
     ----------
     Returns:
     data : ndarray
         Numpy array containing the extracted data according to the parameters specified.
+
+    ----------
+    Raises:
+    ValueError : If shape is not one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.
+    ValueError : If shape is '2D_SST' and useNonAffected is False (can not arrange the channels in 2 dimensions in such a case).
     """
+
+    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST"]:
+        raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.".format(shape))
 
     val_suffix = ""
     if val_set:
@@ -861,9 +868,22 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
 
     data = data_dict["affected"+val_suffix]
 
+    if shape == "2D_SST":
+        if not useNonAffected:
+            raise ValueError("Shape '2DSST' can only be applied if the data from the non-affected side is used.")
+        else:
+            data = np.stack([data, data_dict["non_affected"+val_suffix]], axis=1)
+            data = np.swapaxes(data, -2, -1)
+            return data
+
     if useNonAffected:
-        if shape == "1D":
-            data = np.concatenate([data, data_dict["non_affected"+val_suffix]], axis=-1)
+        data = np.concatenate([data, data_dict["non_affected"+val_suffix]], axis=-1)
+
+    if shape == "2D_TS1":
+        data = np.expand_dims(data, axis=-1)
+
+    if shape == "2D_T1S":
+        data = np.expand_dims(test_data, axis=-2)
 
     return data
 
