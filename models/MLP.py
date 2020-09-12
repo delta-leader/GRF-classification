@@ -23,7 +23,7 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "MLP Sweep 2Layer - DropOut&BN",
-        "method": "grid",
+        "method": "bayes",
         "description": "Find the optimal number of layers/neurons",
         "metric": {
             "name": "val_accuracy",
@@ -190,7 +190,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
         tester.save_model_plot(model, "MLP_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="MLP_1L_N58.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N58.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="MLP_1L_N58.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N58.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 

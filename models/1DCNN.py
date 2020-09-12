@@ -9,7 +9,7 @@ from GRFScaler import GRFScaler
 from ModelTester import ModelTester, create_heatmap, resetRand, wandb_init
 
 from tensorflow.keras import Input
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, AveragePooling1D, Dense, Flatten, Dropout, BatchNormalization, SeparableConv1D, concatenate
 
 
@@ -127,7 +127,7 @@ def create_1DCNN(input_shape, config):
     
     input_layer = Input(shape=input_shape)
 
-    # adds BatchNormalization, MaxPooling & Dropout if specified
+    # adds BatchNormalization, Pooling & Dropout if specified
     def finish_layer(conv, config):
         if config.batch_normalization:
             conv = BatchNormalization()(conv)
@@ -217,7 +217,7 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_1DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
         tester.save_model_plot(model, "1DCNN_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, logfile="1DCNN_1L.dat", model_name="1DCNN - 1 Layer", plot_name="1DCNN_1L.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="1DCNN_1L.dat", model_name="1DCNN - 1 Layer", plot_name="1DCNN_1L.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 
