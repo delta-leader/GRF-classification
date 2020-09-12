@@ -152,7 +152,7 @@ def create_1D(input_shape, config):
 
     # add 1DCNN-layers
     for layer in range(config.layers):
-        model.add(Conv2D(filters=getattr(config, "filters{}".format(layer)), kernel_size=getattr(config, "kernel{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer, padding=config.padding))
+        model.add(Conv1D(filters=getattr(config, "filters{}".format(layer)), kernel_size=getattr(config, "kernel{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer, padding=config.padding))
         finish_layer(model, config)
         model.add(MaxPooling1D(pool_size=config.pool_size))
 
