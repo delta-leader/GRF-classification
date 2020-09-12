@@ -9,8 +9,8 @@ from GRFScaler import GRFScaler
 from ModelTester import ModelTester, create_heatmap, resetRand, wandb_init
 
 from tensorflow.keras import Input
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, BatchNormalization, GlobalAveragePooling1D, Dense, Activation
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Conv1D, GlobalAveragePooling1D, Dense, Activation, Add, BatchNormalization
 
 
 def create_sweep_config():
@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "FCN Sweep",
+        "name": "ResNet Sweep",
         "method": "grid",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -60,14 +60,15 @@ def create_sweep_config():
 
 
 def create_config():
-    """Creates the configuration file with the settings for the FCN network described in
+    """Creates the configuration file with the settings for ResNet as described in
     "Time Series Classification from Scratch with Deep Neural Networks: A Strong Baseline" (Wang and Oates, 2016).
     """
 
     config = {
+        "blocks": 3,
         "layers": 3,
-        "filters0": 128,
-        "filters1": 256,
+        "filters0": 64,
+        "filters1": 128,
         "filters2": 128,
         "kernel0": 8,
         "kernel1": 5,
@@ -88,8 +89,8 @@ def create_config():
 
     return config
 
-def create_FCN(input_shape, config):
-    """Creates FCN network according to the specifications in
+def create_ResNet(input_shape, config):
+    """Creates ResNet according to the specifications in
     "Time Series Classification from Scratch with Deep Neural Networks: A Strong Baseline" (Wang and Oates, 2016)
      and the settings obtained from 'config'
 
@@ -105,23 +106,34 @@ def create_FCN(input_shape, config):
         The model created according to the specifications.
     """
     
-    model = Sequential()
-    model.add(Input(shape=input_shape))
-    
-    # add cnn layers
-    for layer in range(config.layers):
-        model.add(Conv1D(filters=getattr(config, "filters{}".format(layer)), kernel_size=getattr(config, "kernel{}".format(layer)), kernel_regularizer=config.regularizer, padding=config.padding))
-        model.add(BatchNormalization())
-        model.add(Activation(config.activation))
+    input_layer = Input(shape=input_shape)
 
-    model.add(GlobalAveragePooling1D())
-    model.add(Dense(5, activation=config.final_activation, kernel_regularizer=config.regularizer))
+    def residual_block(tensor, config, block):
+        out = tensor
+        expanded_in = Conv1D(filters=getattr(config, "filters{}".format(block)), kernel_size=1, kernel_regularizer=config.regularizer, padding=config.padding)(tensor)
+        expanded_in = BatchNormalization()(expanded_in)
+        for layer in range(config.layers):
+            out = Conv1D(filters=getattr(config, "filters{}".format(block)), kernel_size=getattr(config, "kernel{}".format(layer)), kernel_regularizer=config.regularizer, padding=config.padding)(out)
+            out = BatchNormalization()(out)
+            if layer == (config.layers - 1):
+                out = Add()([expanded_in, out])
+            out = Activation(config.activation)(out)
+        return out
+
+    out = input_layer
+    for block in range(config.blocks):
+        out = residual_block(out, config, block)
+
+    out = GlobalAveragePooling1D()(out)
+    out = Dense(5, activation=config.final_activation, kernel_regularizer=config.regularizer)(out)
+
+    model = Model(input_layer, out)
 
     return model
 
 
-def validate_FCN(train, test=None, class_dict=None, sweep=False):
-    """Trains and tests the FCN as defined in 
+def validate_ResNet(train, test=None, class_dict=None, sweep=False):
+    """Trains and tests the ResNet as defined in 
     "Time Series Classification from Scratch with Deep Neural Networks: A Strong Baseline" (Wang and Oates, 2016).
     Two modes are available:
     'sweep' == True -> performs a sweep of hyperparameters according to the specified sweep-configuration.
@@ -149,22 +161,22 @@ def validate_FCN(train, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            model = create_FCN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+            model = create_ResNet(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
             tester.perform_sweep(model, config, train, shape="1D", useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
         wandb.agent(sweep_id, function=trainNN)
     
     else:
-        filepath = "./output/FCN"
-        #filepath = "models/output/MLP/WandB/FCN"
+        filepath = "./output/ResNet"
+        #filepath = "models/output/MLP/WandB/ResNet"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
         resetRand()
-        model = create_FCN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
-        tester.save_model_plot(model, "FCN_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="FCN.dat", model_name="FCN", plot_name="FCN.png")
+        model = create_ResNet(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+        tester.save_model_plot(model, "ResNet_model.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="ResNet.dat", model_name="ResNet", plot_name="ResNet.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 
@@ -176,6 +188,6 @@ if __name__ == "__main__":
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2,include_info=False)
 
-    validate_FCN(train, test=None, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_ResNet(train, test=None, class_dict=fetcher.get_class_dict(), sweep=False)
