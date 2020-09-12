@@ -22,9 +22,9 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "MLP Sweep 2Layer - DropOut&BN",
+        "name": "MLP Sweep 1Layer - Hyperparameters",
         "method": "bayes",
-        "description": "Find the optimal number of layers/neurons",
+        "description": "Find the optimal hyperparameters for 1Layer",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
@@ -33,54 +33,54 @@ def create_sweep_config():
             #"layers": {
             #    "values": [1, 2]
             #},
-            "neurons0": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 300
-            },
-            "neurons2": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 300
-            },
-            "batch_normalization": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "dropout": {
-                "distribution": "uniform",
-                "min": 0.1,
-                "max": 0.5
-            }
-            #"learning_rate":{
-            #    "distribution": "uniform",
-            #    "min": 0.0001,
-            #    "max": 0.01
-            #},
-            #"beta_1":{
-            #    "distribution": "uniform",
-            #    "min": 0.6,
-            #    "max": 0.99
-            #},
-            #"beta_2":{
-            #    "distribution": "uniform",
-            #    "min": 0.7,
-            #    "max": 0.999
-            #},
-            #"amsgrad":{
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"epochs":{
+            #"neurons0": {
             #    "distribution": "int_uniform",
             #    "min": 20,
             #    "max": 300
             #},
-            #"batch_size":{
+            #"neurons2": {
             #    "distribution": "int_uniform",
-            #    "min": 16,
-            #    "max": 512
+            #    "min": 20,
+            #    "max": 300
             #},
+            #"batch_normalization": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"dropout": {
+            #    "distribution": "uniform",
+            #    "min": 0.1,
+            #    "max": 0.5
+            #}
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
+            },
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
+            },
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
+            },
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            #"epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 300
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -91,8 +91,8 @@ def create_config():
     """Creates the configuration file with the settings for the MLP."""
 
     config = {
-        "layers": 2,
-        "neurons0": 190,
+        "layers": 1,
+        "neurons0": 90,
         "neurons1": 50,
         "neurons2": 50,
         "batch_normalization": False,
@@ -190,7 +190,7 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_MLP(input_shape=(train["affected"].shape[1]*2,), config=config)
         tester.save_model_plot(model, "MLP_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="MLP_1L_N58.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N58.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="MLP_1L_N90.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N90.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 
