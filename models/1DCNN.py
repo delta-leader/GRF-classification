@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "1DCNN Sweep 1Layer",
+        "name": "1DCNN Sweep 1Layer (dilated) - Hyperparameters",
         "method": "grid",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -30,14 +30,11 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
-            },
-            "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
-            },
+            #"filters0": {
+            #    "values": [10, 20, 30, 40, 50]
+            #    #"min": 40,
+            #    #"max": 190
+            #},
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
             #    #"min": 40,
@@ -52,16 +49,45 @@ def create_sweep_config():
             #    "min": 0.1,
             #    "max": 0.5
             #}
-            "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
-            },
+            #"kernel0": {
+            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
+            #    #"min": 40,
+            #    #"max": 190
+            #},
             #"kernel1": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
             #    #"max": 190
             #},
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
+            },
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
+            },
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
+            },
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -73,27 +99,27 @@ def create_config():
 
     config = {
         "layers": 1,
-        "filters0": 32,
+        "filters0": 195,
         "filters1": 32,
         "filters2": 32,
-        "kernel0": 8,
+        "kernel0": 19,
         "kernel1": 5,
         "kernel2": 3,
         "stride0": 1,
         "stride1": 1,
         "stride2": 1,
-        "dilation0": 1,
+        "dilation0": 10,
         "dilation1": 1,
         "dilation2": 1,
         "batch_normalization": False,
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 3,
         "pool_stride": None,
-        "neurons": 50,
-        "dropout_cnn": None,
-        "dropout_mlp": None,
-        "separable": False,
-        "skipConnections": False,
+        "neurons": 52,
+        "dropout_cnn": 0.46083479248192005,
+        "dropout_mlp": 0.21514964290670255,
+        "separable": True,
+        "skipConnections": True,
         "padding": "valid",
         "activation": "relu",
         "final_activation": "softmax",
@@ -209,8 +235,8 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN)
     
     else:
-        filepath = "./output/1DCNN"
-        #filepath = "models/output/MLP/WandB/CNN"
+        #filepath = "./output/1DCNN"
+        filepath = "models/output/MLP/WandB/CNN"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -231,6 +257,6 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_1DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_1DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
 
    

@@ -71,7 +71,7 @@ def create_sweep_config():
                 "distribution": "categorical",
                 "values": [True, False]
             },
-            #"epochs":{
+            "epochs":{
                 "distribution": "int_uniform",
                 "min": 20,
                 "max": 300
