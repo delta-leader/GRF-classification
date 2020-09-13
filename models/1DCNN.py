@@ -22,72 +22,104 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "1DCNN Sweep 1Layer (dilated) - Hyperparameters",
-        "method": "grid",
+        "name": "1DCNN Sweep 1Layer (dilated)",
+        "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
         },
         "parameters": {
-            #"filters0": {
-            #    "values": [10, 20, 30, 40, 50]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "filters0": {
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
+            },
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
             #    #"min": 40,
             #    #"max": 190
             #},
-            #"batch_normalization": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"dropout": {
-            #    "distribution": "uniform",
-            #    "min": 0.1,
-            #    "max": 0.5
-            #}
-            #"kernel0": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "batch_normalization": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "separable": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "skipConnections": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "dropout_cnn": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "kernel0": {
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 20
+            },
+            "pool_type": {
+                "distribution": "categorical",
+                "values": ["max", "avg", None]
+            },
+            "pool_size":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 4
+            },
+            "stride0":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
+            "neurons":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
             #"kernel1": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
             #    #"max": 190
             #},
-            "learning_rate":{
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.01
-            },
-            "beta_1":{
-                "distribution": "uniform",
-                "min": 0.5,
-                "max": 0.99
-            },
-            "beta_2":{
-                "distribution": "uniform",
-                "min": 0.6,
-                "max": 0.999
-            },
-            "amsgrad":{
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "epochs":{
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 200
-            },
-            "batch_size":{
-                "distribution": "int_uniform",
-                "min": 8,
-                "max": 512
-            },
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
+            #},
         }
     }
 
@@ -99,28 +131,28 @@ def create_config():
 
     config = {
         "layers": 1,
-        "filters0": 195,
+        "filters0": 35,
         "filters1": 32,
         "filters2": 32,
-        "kernel0": 19,
+        "kernel0": 11,
         "kernel1": 5,
         "kernel2": 3,
         "stride0": 1,
         "stride1": 1,
         "stride2": 1,
-        "dilation0": 10,
+        "dilation0": 1,
         "dilation1": 1,
         "dilation2": 1,
         "batch_normalization": False,
         "pool_type": "max",
-        "pool_size": 3,
+        "pool_size": 2,
         "pool_stride": None,
-        "neurons": 52,
-        "dropout_cnn": 0.46083479248192005,
-        "dropout_mlp": 0.21514964290670255,
+        "neurons": 100,
+        "dropout_cnn": 0.35169657760885964,
+        "dropout_mlp": 0.20119301210043888,
         "separable": True,
         "skipConnections": True,
-        "padding": "valid",
+        "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
@@ -232,7 +264,7 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
             tester.perform_sweep(model, config, train, shape="1D", useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
-        wandb.agent(sweep_id, function=trainNN)
+        wandb.agent(sweep_id, function=trainNN, count=1000)
     
     else:
         #filepath = "./output/1DCNN"
@@ -257,6 +289,6 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_1DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_1DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
 
    
