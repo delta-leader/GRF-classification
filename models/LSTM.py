@@ -30,13 +30,15 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
+            "units0": {
+                "distribution": "int_uniform"
+                "min": 20,
+                "max": 100
             },
-            "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
+            "neurons": {
+                "distribution": "int_uniform"
+                "min": 20,
+                "max": 200
             },
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
@@ -47,16 +49,26 @@ def create_sweep_config():
             #    "distribution": "categorical",
             #    "values": [True, False]
             #},
-            #"dropout": {
-            #    "distribution": "uniform",
-            #    "min": 0.1,
-            #    "max": 0.5
-            #}
-            "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
+            "dropout_lstm": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
             },
+            "dropout_recurrent": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            }
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            }
+            #"kernel0": {
+            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
+            #    #"min": 40,
+            #    #"max": 190
+            #},
             #"kernel1": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
@@ -77,7 +89,7 @@ def create_config():
         "units1": 60,
         "units2": 30,
         "dropout_lstm": 0.0,
-        "recurrent_dropout": 0.0,
+        "dropout_recurrent": 0.0,
         "activation_lstm": "tanh",
         "mode_cnn": None,
         "layers_cnn": 2,
@@ -154,7 +166,7 @@ def create_LSTM(input_shape, config):
         return conv
     
     def add_lstm_layer(lstm, config, layer, return_seq):
-        lstm = LSTM(units=getattr(config, "units{}".format(layer)), activation=config.activation_lstm, kernel_regularizer=config.regularizer, dropout=config.dropout_lstm, recurrent_dropout=config.recurrent_dropout, return_sequences=return_seq)(lstm)
+        lstm = LSTM(units=getattr(config, "units{}".format(layer)), activation=config.activation_lstm, kernel_regularizer=config.regularizer, dropout=config.dropout_lstm, recurrent_dropout=config.dropout_recurrent, return_sequences=return_seq)(lstm)
         return lstm
 
     lstm = input_layer
@@ -232,8 +244,8 @@ def validate_LSTM(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN)
     
     else:
-        #filepath = "./output/LSTM"
-        filepath = "models/output/MLP/WandB/LSTM"
+        filepath = "./output/LSTM"
+        #filepath = "models/output/MLP/WandB/LSTM"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -248,10 +260,10 @@ def validate_LSTM(train, test=None, class_dict=None, sweep=False):
 
 
 if __name__ == "__main__":
-    #filepath = "../.."
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../.."
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_LSTM(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_LSTM(train, sweep=True, class_dict=fetcher.get_class_dict())
