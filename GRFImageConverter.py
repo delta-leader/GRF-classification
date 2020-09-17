@@ -85,7 +85,7 @@ class GRFImageConverter(object):
 
         Parameters:
         data_dict: dict
-            Dictionary containing the GRF-data to be converted. All datasets are converted except the one stored under 'label'.
+            Dictionary containing the GRF-data to be converted. All datasets are converted except the one stored under 'label' and 'label_val'.
             At least the keys 'affected' and 'non_affected' must exist for successfull conversion.
 
         conversions : str, list of str or None, default=None
@@ -282,14 +282,15 @@ def _get_keys(data):
         Dictinonary containing the following keys:
             'affected' : 3-dimensional ndarray of shape num_samples x time_steps x channels
             'non_affected' : 3-dimensional ndarray of shape num_samples x time_steps x channels
-            'label' : 1-dimensional ndarray of shape num_samples x time_steps x channels
+            'label' : 1-dimensional ndarray of shape num_samples
             'affected_val' (optional) : 3-dimensional ndarray of shape num_samples x time_steps x channels
             'non_affected_val' (optional) : 3-dimensional ndarray of shape num_samples x time_steps x channels
+            'label_val' (optional): ndarray of shape num_samples
 
     ----------
     Returns:
     key_list : list of shape (2) or shape (4)
-        Includes all keys from the input except 'label'
+        Includes all keys from the input except 'label' and 'label_val'
 
     ----------
     Raises:
@@ -308,6 +309,8 @@ def _get_keys(data):
             raise ValueError("Key: '{}' not found in the provided dictionary.".format(key))
 
     key_list.remove("label")
+    if "label_val" in key_list:
+        key_list.remove("label_val")
 
     return key_list
 
@@ -546,7 +549,7 @@ def _convert_on_cpu(func, data, conversions, conv_args, imgFilter):
             min_value = np.min(data)
             max_value = np.max(data)
             if min_value < -1:
-                raise ValueError("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
+                warnings.warn("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
             if max_value > 1:
                 warnings.warn("Maximum value in the data is {}. All values >1 will be clipped to 1".format(max_value))
 
@@ -650,7 +653,7 @@ def _calc_gafs(signal, imgFilter, args):
     """
     
     # because of precision errors, values can be slightly bigger than 1 which would lead to problems with arccos
-    angle = np.arccos(np.minimum(1, signal))
+    angle = np.arccos(np.maximum(-1, np.minimum(1, signal)))
             
     time_steps = signal.shape[0]
     gafs = np.empty([time_steps, time_steps, 2])
@@ -799,7 +802,7 @@ def _convert_on_gpu(data, conversions, conv_args, imgFilter):
             min_value = cp.min(data)
             max_value = cp.max(data)
             if min_value < -1:
-                raise ValueError("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
+                warnings.warn("Minimum value in the data is {} but arccos can only handle values within [-1, 1].".format(min_value))
             if max_value > 1:
                 warnings.warn("Maximum value in the data is {}. All values >1 will be clipped to 1".format(max_value))
             converted_data["gasf"], converted_data["gadf"] = _convert_to_gaf_gpu(data, imgFilter)
@@ -840,7 +843,7 @@ def _convert_to_gaf_gpu(data, imgFilter):
     """
 
     # cut values because precision errors sometimes leads to values sligthly bigger than 1 which causes problems for the arccos
-    angle = cp.arccos(cp.minimum(1, data))
+    angle = cp.arccos(cp.maximum(-1, cp.minimum(1, data)))
     
     gaf_kernel = cp.RawKernel(r'''
     extern "C" __global__

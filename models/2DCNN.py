@@ -31,13 +31,11 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
-            },
             "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
+                "values": [8, 16, 32, 64, 128, 256, 512, 1024]
+                #"distribution": "int_uniform",
+                #"min": 20,
+                #"max": 250
             },
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
@@ -48,20 +46,78 @@ def create_sweep_config():
             #    "distribution": "categorical",
             #    "values": [True, False]
             #},
-            #"dropout": {
+            #"skipConnections": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"dropout_cnn": {
             #    "distribution": "uniform",
-            #    "min": 0.1,
+            #    "min": 0.0,
             #    "max": 0.5
-            #}
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
             "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
+                "values": [(i, j) for j in range(10) for i in [3,2,13,21,11,5]]
+                #"distribution": "int_uniform",
+                #"min": 2,
+                #"max": 20
             },
+            #"pool_type": {
+            #    "distribution": "categorical",
+            #    "values": ["max", "avg", None]
+            #},
+            #"pool_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 4
+            #},
+            #"stride0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
+            #"neurons":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
             #"kernel1": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
             #    #"max": 190
+            #},
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
             #},
         }
     }
@@ -91,11 +147,11 @@ def create_config():
         "pool_type": None,
         "pool_size": 2,
         "pool_stride": None,
-        "neurons": 50,
+        "neurons": 90,
         "dropout_cnn": None,
         "dropout_mlp": None,
         "skipConnections": False,
-        "padding": "valid",
+        "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
@@ -267,4 +323,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_2DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_2DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())

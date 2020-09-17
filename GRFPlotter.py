@@ -83,7 +83,7 @@ class GRFPlotter(object):
         
 
 
-    def plot_image(self, data, keys=None, images=None, sampleIndex=None, channels=None, comp_order=None ):
+    def plot_image(self, data, keys=None, images=None, sampleIndex=None, channels=None, comp_order=None, show=True, save=False, folder="", prefix="", vmin=-1, vmax=1):
         """Plots the GRF-data that has been converted to images using matplotlib.
 
         Parameters:
@@ -164,7 +164,7 @@ class GRFPlotter(object):
 
 
         # Check sampleIndex
-        num_samples = self.__get_sample_count(data, available_keys, available_images)
+        num_samples = self.__get_sample_count(data, keys, images)
         if sampleIndex is None:
             sampleIndex = range(num_samples)
 
@@ -213,15 +213,22 @@ class GRFPlotter(object):
         for channel in channels:
             channelIndices.append(comp_order.index(channel))
 
-
         for key in keys:
             for image in images:
                 for i in sampleIndex:
                     for j in channelIndices:
                         plt.figure("Component: {}".format(comp_order[j]))
-                        plt.imshow(data[key][image][i, :, :, j], cmap=self.colormap)
+                        fig, ax = plt.subplots(num="Component: {}".format(comp_order[j]))
+                        #plt.imshow(data[key][image][i, :, :, j], cmap=self.colormap)
+                        im = ax.imshow(data[key][image][i, :, :, j], cmap=self.colormap, vmin=vmin, vmax=vmax)
+                        cbar = ax.figure.colorbar(im, ax=ax)
+                        
+
                         plt.title("{} - '{}' (Sample: {})".format(image.upper(), key, i))
-                    plt.show()
+                        if save:
+                            fig.savefig("output/Images/"+folder+"/"+image+"/"+prefix+"_"+comp_order[j]+".png")
+                    if show:
+                        plt.show()
 
 
 

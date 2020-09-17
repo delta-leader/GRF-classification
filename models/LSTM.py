@@ -23,7 +23,7 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "LSTM Sweep 1Layer",
-        "method": "grid",
+        "method": "bayes",
         "description": "Find the optimal number of units/layers, etc.",
         "metric": {
             "name": "val_accuracy",
@@ -31,12 +31,12 @@ def create_sweep_config():
         },
         "parameters": {
             "units0": {
-                "distribution": "int_uniform"
+                "distribution": "int_uniform",
                 "min": 20,
                 "max": 100
             },
             "neurons": {
-                "distribution": "int_uniform"
+                "distribution": "int_uniform",
                 "min": 20,
                 "max": 200
             },
@@ -58,12 +58,12 @@ def create_sweep_config():
                 "distribution": "uniform",
                 "min": 0.0,
                 "max": 0.5
-            }
+            },
             "dropout_mlp": {
                 "distribution": "uniform",
                 "min": 0.0,
                 "max": 0.5
-            }
+            },
             #"kernel0": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
