@@ -61,7 +61,7 @@ def create_sweep_config():
             #    "max": 0.5
             #},
             "kernel0": {
-                "values": [(i, j) for j in range(10) for i in [3,2,13,21,11,5]]
+                "values": [(i, j) for j in range(2,10) for i in [3,2,13,21,11,5]]
                 #"distribution": "int_uniform",
                 #"min": 2,
                 #"max": 20
