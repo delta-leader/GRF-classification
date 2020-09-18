@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "LSTM Sweep 1Layer",
+        "name": "LSTM Sweep 2Layer(noDense)",
         "method": "grid",
         "description": "Find the optimal number of units/layers, etc.",
         "metric": {
@@ -32,15 +32,21 @@ def create_sweep_config():
         "parameters": {
             "units0": {
                 "values": [10, 20, 30, 40, 50, 60, 70 ,80, 90 ,100]
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 100
+                #"distribution": "int_uniform",
+                #"min": 20,
+                #"max": 100
+            },
+            "units1": {
+                "values": [10, 20, 30, 40, 50, 60, 70 ,80, 90 ,100]
+                #"distribution": "int_uniform",
+                #"min": 20,
+                #"max": 100
             },
             #"neurons": {
             #    "distribution": "int_uniform",
             #    "min": 20,
             #    "max": 200
-            },
+            #},
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
             #    #"min": 40,
@@ -85,7 +91,7 @@ def create_config():
     """Creates the configuration file with the settings for the LSTM."""
 
     config = {
-        "layers_lstm": 1,
+        "layers_lstm": 2,
         "units0": 90,
         "units1": 60,
         "units2": 30,
