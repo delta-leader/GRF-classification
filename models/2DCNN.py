@@ -214,9 +214,9 @@ def create_2DCNN(input_shape, config):
         if config.batch_normalization:
             conv = BatchNormalization()(conv)
         if config.pool_type == "max":
-            conv = MaxPooling2D(pool_size=(config.pool_size0, config.poolsize1), strides=config.pool_stride)(conv)
+            conv = MaxPooling2D(pool_size=(config.pool_size0, config.pool_size1), strides=config.pool_stride)(conv)
         if config.pool_type == "avg":
-            conv = AveragePooling2D(pool_size=(config.pool_size0, config.poolsize1), strides=config.pool_stride)(conv)
+            conv = AveragePooling2D(pool_size=(config.pool_size0, config.pool_size1), strides=config.pool_stride)(conv)
         if config.dropout_cnn is not None:
             conv = Dropout(rate=config.dropout_cnn)(conv)
         return conv
