@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 1Layer",
+        "name": "2DCNN Sweep 1Layer(strided)",
         "method": "grid",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -32,64 +32,82 @@ def create_sweep_config():
         },
         "parameters": {
             "filters0": {
-                "values": [8, 16, 32, 64, 128, 256, 512, 1024]
-                #"distribution": "int_uniform",
-                #"min": 20,
-                #"max": 250
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
             },
             #"filters1": {
-            #    "values": [10, 20, 30, 40, 50]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
-            #"batch_normalization": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"skipConnections": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"dropout_cnn": {
-            #    "distribution": "uniform",
-            #    "min": 0.0,
-            #    "max": 0.5
-            #},
-            #"dropout_mlp": {
-            #    "distribution": "uniform",
-            #    "min": 0.0,
-            #    "max": 0.5
-            #},
-            "kernel0": {
-                "values": [(i, j) for j in range(2,10) for i in [3,2,13,21,11,5]]
-                #"distribution": "int_uniform",
-                #"min": 2,
-                #"max": 20
-            },
-            #"pool_type": {
-            #    "distribution": "categorical",
-            #    "values": ["max", "avg", None]
-            #},
-            #"pool_size":{
             #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 4
+            #    "min": 20,
+            #    "max": 250
             #},
-            #"stride0":{
+            "batch_normalization": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "skipConnections": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "dropout_cnn": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "kernel0_0": {
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 30
+            },
+            "kernel0_1": {
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 10
+            },
+            "pool_type": {
+                "distribution": "categorical",
+                "values": ["max", "avg", None]
+            },
+            "pool_size0":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 5
+            },
+            "pool_size1":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 5
+            },
+            "stride0_0":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 10
+            },
+            "stride0_1":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 3
+            },
+            #"dilation0_0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 20
+            #},
+            #"dilation0_1":{
             #    "distribution": "int_uniform",
             #    "min": 1,
             #    "max": 5
             #},
-            #"neurons":{
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 200
-            #},
-            #"kernel1": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "neurons":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
             #"learning_rate":{
             #    "distribution": "uniform",
             #    "min": 0.0001,
@@ -134,18 +152,25 @@ def create_config():
         "filters0": 32,
         "filters1": 32,
         "filters2": 32,
-        "kernel0": 2,
-        "kernel1": 5,
+        "kernel0_0": 11,
+        "kernel0_1": 3,
+        "kernel1_0": 5,
+        "kernel1_1": 5,
         "kernel2": 3,
-        "stride0": 1,
-        "stride1": 1,
-        "stride2": 1,
-        "dilation0": 1,
-        "dilation1": 1,
-        "dilation2": 1,
+        "kernel2_0": 3,
+        "kernel2_1": 3,
+        "stride0_0": 1,
+        "stride0_1": 1,
+        "stride1_0": 1,
+        "stride1_1": 1,
+        "dilation0_0": 1,
+        "dilation0_1": 1,
+        "dilation1_0": 1,
+        "dilation1_1": 1,
         "batch_normalization": False,
         "pool_type": None,
-        "pool_size": 2,
+        "pool_size0": 2,
+        "pool_size1": 1,
         "pool_stride": None,
         "neurons": 90,
         "dropout_cnn": None,
@@ -189,15 +214,15 @@ def create_2DCNN(input_shape, config):
         if config.batch_normalization:
             conv = BatchNormalization()(conv)
         if config.pool_type == "max":
-            conv = MaxPooling2D(pool_size=config.pool_size, strides=config.pool_stride)(conv)
+            conv = MaxPooling2D(pool_size=(config.pool_size0, config.poolsize1), strides=config.pool_stride)(conv)
         if config.pool_type == "avg":
-            conv = AveragePooling2D(pool_size=config.pool_size, strides=config.pool_stride)(conv)
+            conv = AveragePooling2D(pool_size=(config.pool_size0, config.poolsize1), strides=config.pool_stride)(conv)
         if config.dropout_cnn is not None:
             conv = Dropout(rate=config.dropout_cnn)(conv)
         return conv
 
     def add_conv_layer(conv, config, layer):
-        conv = Conv2D(filters=getattr(config, "filters{}".format(layer)), kernel_size=getattr(config, "kernel{}".format(layer)), strides=getattr(config, "stride{}".format(layer)), dilation_rate=getattr(config, "dilation{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer, padding=config.padding)(conv)
+        conv = Conv2D(filters=getattr(config, "filters{}".format(layer)), kernel_size=(getattr(config, "kernel{}_0".format(layer)),getattr(config, "kernel{}_1".format(layer))), strides=(getattr(config, "stride{}_0".format(layer)), getattr(config, "stride{}_1".format(layer))), dilation_rate=(getattr(config, "dilation{}_0".format(layer)), getattr(config, "dilation{}_1".format(layer))), activation=config.activation, kernel_regularizer=config.regularizer, padding=config.padding)(conv)
         return conv
 
     # add convolutional layers
@@ -323,4 +348,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_2DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_2DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
