@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 1Layer(strided)",
+        "name": "2DCNN Sweep 2Layer(strided)",
         "method": "grid",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -36,11 +36,11 @@ def create_sweep_config():
                 "min": 20,
                 "max": 250
             },
-            #"filters1": {
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 250
-            #},
+            "filters1": {
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
+            },
             "batch_normalization": {
                 "distribution": "categorical",
                 "values": [True, False]
@@ -67,7 +67,17 @@ def create_sweep_config():
             "kernel0_1": {
                 "distribution": "int_uniform",
                 "min": 1,
-                "max": 10
+                "max": 5
+            },
+            "kernel1_0": {
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 30
+            },
+            "kernel2_1": {
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
             },
             "pool_type": {
                 "distribution": "categorical",
@@ -81,17 +91,17 @@ def create_sweep_config():
             "pool_size1":{
                 "distribution": "int_uniform",
                 "min": 2,
-                "max": 5
+                "max": 3
             },
             "stride0_0":{
                 "distribution": "int_uniform",
                 "min": 1,
                 "max": 10
             },
-            "stride0_1":{
+            "stride1_0":{
                 "distribution": "int_uniform",
                 "min": 1,
-                "max": 3
+                "max": 10
             },
             #"dilation0_0":{
             #    "distribution": "int_uniform",
@@ -148,7 +158,7 @@ def create_config():
 
     config = {
         "input_shape": "TS1",
-        "layers": 1,
+        "layers": 2,
         "filters0": 32,
         "filters1": 32,
         "filters2": 32,
