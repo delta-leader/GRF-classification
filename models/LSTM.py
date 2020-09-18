@@ -23,7 +23,7 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "LSTM Sweep 1Layer",
-        "method": "bayes",
+        "method": "grid",
         "description": "Find the optimal number of units/layers, etc.",
         "metric": {
             "name": "val_accuracy",
@@ -31,14 +31,15 @@ def create_sweep_config():
         },
         "parameters": {
             "units0": {
+                "values": [10, 20, 30, 40, 50, 60, 70 ,80, 90 ,100]
                 "distribution": "int_uniform",
                 "min": 20,
                 "max": 100
             },
-            "neurons": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 200
+            #"neurons": {
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
             },
             #"filters1": {
             #    "values": [10, 20, 30, 40, 50]
@@ -49,21 +50,21 @@ def create_sweep_config():
             #    "distribution": "categorical",
             #    "values": [True, False]
             #},
-            "dropout_lstm": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "dropout_recurrent": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
+            #"dropout_lstm": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"dropout_recurrent": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
             #"kernel0": {
             #    "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
@@ -92,7 +93,7 @@ def create_config():
         "dropout_recurrent": 0.0,
         "activation_lstm": "tanh",
         "mode_cnn": None,
-        "layers_cnn": 2,
+        "layers_cnn": 0,
         "filters0": 32,
         "filters1": 32,
         "filters2": 32,
@@ -106,14 +107,14 @@ def create_config():
         "dilation1": 1,
         "dilation2": 1,
         "batch_normalization": False,
-        "pool_type": "max",
+        "pool_type": None,
         "pool_size": 2,
         "pool_stride": None,
-        "neurons": 50,
+        "neurons": None,
         "dropout_cnn": None,
         "dropout_mlp": None,
         "separable": False,
-        "padding": "valid",
+        "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
