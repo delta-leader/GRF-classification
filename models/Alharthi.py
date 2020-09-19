@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "Alharthi2D (modified) - Hyperparameters",
+        "name": "Alharthi2D - Hyperparameters",
         "method": "bayes",
         "description": "Find the optimal hyperparameters",
         "metric": {
@@ -31,6 +31,10 @@ def create_sweep_config():
         },
         "parameters": {
             "batch_normalization": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "avg_pooling": {
                 "distribution": "categorical",
                 "values": [True, False]
             },
@@ -173,13 +177,13 @@ def create_config_2D():
     """
 
     config = {
-        "layers": 3,
+        "layers": 2,
         "filters0": 12,
         "filters1": 24,
         "filters2": 48,
         "filters3": 96,
-        "kernel0": 2,
-        "kernel1": 2,
+        "kernel0": (2,1),
+        "kernel1": (1,2),
         "kernel2": 2,
         "kernel3": 2,
         "avg_pooling" : True,
@@ -356,9 +360,8 @@ def validate_model(train, model="1D", test=None, class_dict=None, sweep=False):
     if model == "2D":
         create_model = create_2D
         model_config = create_config_2D()
-        shape = "2D_TS1"#"2D_SST"
-        #input_shape = (2, train["affected"].shape[2], train["affected"].shape[1])
-        input_shape = (train["affected"].shape[1], train["affected"].shape[2]*2,1)
+        shape = "2D_SST"
+        input_shape = (2, train["affected"].shape[2], train["affected"].shape[1])
     if model == "LSTM":
         create_model = create_LSTM
         model_config = create_config_LSTM()
