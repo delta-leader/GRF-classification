@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "Alharthi1D - Hyperparameters",
+        "name": "Alharthi2D (modified) - Hyperparameters",
         "method": "bayes",
         "description": "Find the optimal hyperparameters",
         "metric": {
@@ -38,16 +38,16 @@ def create_sweep_config():
                 "distribution": "categorical",
                 "values": [None, "l2"]
             },
-            "dropout_cnn": {
+            "dropout": {
                 "distribution": "uniform",
-                "min": 0.5,
+                "min": 0.4,
                 "max": 0.6
             },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.1,
-                "max": 0.3
-            },
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.1,
+            #    "max": 0.3
+            #},
             "learning_rate":{
                 "distribution": "uniform",
                 "min": 0.0001,
@@ -75,7 +75,7 @@ def create_sweep_config():
             "epochs":{
                 "distribution": "int_uniform",
                 "min": 20,
-                "max": 300
+                "max": 200
             },
             "batch_size":{
                 "distribution": "int_uniform",
@@ -182,10 +182,10 @@ def create_config_2D():
         "kernel1": 2,
         "kernel2": 2,
         "kernel3": 2,
-        "avg_pooling" : False,
-        "pool_size0": (2,1),
-        "pool_size1": (1,2),
-        "pool_size2": (1,2),
+        "avg_pooling" : True,
+        "pool_size0": (2,2),
+        "pool_size1": (2,2),
+        "pool_size2": (2,2),
         "neurons": 100,
         "padding": "same",
         "batch_normalization": False,
@@ -356,8 +356,9 @@ def validate_model(train, model="1D", test=None, class_dict=None, sweep=False):
     if model == "2D":
         create_model = create_2D
         model_config = create_config_2D()
-        shape = "2D_SST"
-        input_shape = (2, train["affected"].shape[2], train["affected"].shape[1])
+        shape = "2D_TS1"#"2D_SST"
+        #input_shape = (2, train["affected"].shape[2], train["affected"].shape[1])
+        input_shape = (train["affected"].shape[1], train["affected"].shape[2]*2,1)
     if model == "LSTM":
         create_model = create_LSTM
         model_config = create_config_LSTM()
@@ -401,4 +402,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_model(train, model="2D", test=None, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_model(train, model="2D", test=None, class_dict=fetcher.get_class_dict(), sweep=True)

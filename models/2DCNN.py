@@ -24,7 +24,7 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "2DCNN Sweep 2Layer(strided)",
-        "method": "grid",
+        "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
             "name": "val_accuracy",
