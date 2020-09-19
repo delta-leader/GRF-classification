@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 2Layer(strided)",
+        "name": "2DCNN Sweep 2Layer(1D-Filters)",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -64,17 +64,7 @@ def create_sweep_config():
                 "min": 2,
                 "max": 30
             },
-            "kernel0_1": {
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
-            "kernel1_0": {
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 30
-            },
-            "kernel2_1": {
+            "kernel1_1": {
                 "distribution": "int_uniform",
                 "min": 1,
                 "max": 5
@@ -93,16 +83,16 @@ def create_sweep_config():
                 "min": 2,
                 "max": 3
             },
-            "stride0_0":{
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 10
-            },
-            "stride1_0":{
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 10
-            },
+            #"stride0_0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 10
+            #},
+            #"stride1_0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 10
+            #},
             #"dilation0_0":{
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -163,8 +153,8 @@ def create_config():
         "filters1": 32,
         "filters2": 32,
         "kernel0_0": 11,
-        "kernel0_1": 3,
-        "kernel1_0": 5,
+        "kernel0_1": 1,
+        "kernel1_0": 1,
         "kernel1_1": 5,
         "kernel2": 3,
         "kernel2_0": 3,
