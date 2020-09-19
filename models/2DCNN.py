@@ -64,6 +64,16 @@ def create_sweep_config():
                 "min": 2,
                 "max": 30
             },
+            "kernel0_1": {
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
+            "kernel1_0": {
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 10
+            },
             "kernel1_1": {
                 "distribution": "int_uniform",
                 "min": 1,
@@ -73,26 +83,26 @@ def create_sweep_config():
                 "distribution": "categorical",
                 "values": ["max", "avg", None]
             },
-            "pool_size0":{
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 5
-            },
+            #"pool_size0":{
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 5
+            #},
             "pool_size1":{
                 "distribution": "int_uniform",
                 "min": 2,
                 "max": 3
             },
-            #"stride0_0":{
-            #    "distribution": "int_uniform",
-            #    "min": 1,
-            #    "max": 10
-            #},
-            #"stride1_0":{
-            #    "distribution": "int_uniform",
-            #    "min": 1,
-            #    "max": 10
-            #},
+            "stride0_0":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
+            "stride1_0":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
             #"dilation0_0":{
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -156,7 +166,6 @@ def create_config():
         "kernel0_1": 1,
         "kernel1_0": 1,
         "kernel1_1": 5,
-        "kernel2": 3,
         "kernel2_0": 3,
         "kernel2_1": 3,
         "stride0_0": 1,
