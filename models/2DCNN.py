@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 2Layer(stided)",
+        "name": "2DCNN Sweep 2Layer(1DKernel) - Hyperparameter",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -31,77 +31,77 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "filters0": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 250
-            },
-            "filters1": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 250
-            },
-            "batch_normalization": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "skipConnections": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "dropout_cnn": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "kernel0_0": {
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 30
-            },
-            "kernel0_1": {
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
-            "kernel1_0": {
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 10
-            },
-            "kernel1_1": {
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
-            "pool_type": {
-                "distribution": "categorical",
-                "values": ["max", "avg", None]
-            },
+            #"filters0": {
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 250
+            #},
+            #"filters1": {
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 250
+            #},
+            #"batch_normalization": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"skipConnections": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"dropout_cnn": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"kernel0_0": {
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 30
+            #},
+            #"kernel0_1": {
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
+            #"kernel1_0": {
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 10
+            #},
+            #"kernel1_1": {
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
+            #"pool_type": {
+            #    "distribution": "categorical",
+            #    "values": ["max", "avg", None]
+            #},
             #"pool_size0":{
             #    "distribution": "int_uniform",
             #    "min": 2,
             #    "max": 5
             #},
-            "pool_size1":{
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 3
-            },
-            "stride0_0":{
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
-            "stride1_0":{
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
+            #"pool_size1":{
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 3
+            #},
+            #"stride0_0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
+            #"stride1_0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
             },
             #"dilation0_0":{
             #    "distribution": "int_uniform",
@@ -113,40 +113,40 @@ def create_sweep_config():
             #    "min": 1,
             #    "max": 5
             #},
-            "neurons":{
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 200
-            },
-            #"learning_rate":{
-            #    "distribution": "uniform",
-            #    "min": 0.0001,
-            #    "max": 0.01
-            #},
-            #"beta_1":{
-            #    "distribution": "uniform",
-            #    "min": 0.5,
-            #    "max": 0.99
-            #},
-            #"beta_2":{
-            #    "distribution": "uniform",
-            #    "min": 0.6,
-            #    "max": 0.999
-            #},
-            #"amsgrad":{
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"epochs":{
+            #"neurons":{
             #    "distribution": "int_uniform",
             #    "min": 20,
             #    "max": 200
             #},
-            #"batch_size":{
-            #    "distribution": "int_uniform",
-            #    "min": 8,
-            #    "max": 512
-            #},
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
+            },
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
+            },
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
+            },
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -159,13 +159,13 @@ def create_config():
     config = {
         "input_shape": "TS1",
         "layers": 2,
-        "filters0": 32,
-        "filters1": 32,
+        "filters0": 63,
+        "filters1": 20,
         "filters2": 32,
-        "kernel0_0": 11,
+        "kernel0_0": 4,
         "kernel0_1": 1,
         "kernel1_0": 1,
-        "kernel1_1": 5,
+        "kernel1_1": 4,
         "kernel2_0": 3,
         "kernel2_1": 3,
         "stride0_0": 1,
@@ -176,15 +176,15 @@ def create_config():
         "dilation0_1": 1,
         "dilation1_0": 1,
         "dilation1_1": 1,
-        "batch_normalization": False,
-        "pool_type": None,
-        "pool_size0": 2,
-        "pool_size1": 1,
+        "batch_normalization": True,
+        "pool_type": "max",
+        "pool_size0": 5,
+        "pool_size1": 2,
         "pool_stride": None,
-        "neurons": 90,
-        "dropout_cnn": None,
-        "dropout_mlp": None,
-        "skipConnections": False,
+        "neurons": 162,
+        "dropout_cnn": 0.2036748468533795,
+        "dropout_mlp": 0.1947303088468182,
+        "skipConnections": True,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
