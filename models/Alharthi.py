@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "Alharthi2D - Hyperparameters",
+        "name": "AlharthiLSTM - Hyperparameters",
         "method": "bayes",
         "description": "Find the optimal hyperparameters",
         "metric": {
@@ -30,28 +30,28 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "batch_normalization": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "avg_pooling": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
+            #"batch_normalization": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"avg_pooling": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
             "regularizer": {
                 "distribution": "categorical",
                 "values": [None, "l2"]
             },
-            "dropout": {
+            "dropout_mlp": {
                 "distribution": "uniform",
                 "min": 0.4,
                 "max": 0.6
             },
-            #"dropout_mlp": {
-            #    "distribution": "uniform",
-            #    "min": 0.1,
-            #    "max": 0.3
-            #},
+            "dropout_lstm": {
+                "distribution": "uniform",
+                "min": 0.1,
+                "max": 0.3
+            },
             "learning_rate":{
                 "distribution": "uniform",
                 "min": 0.0001,
@@ -405,4 +405,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_model(train, model="2D", test=None, class_dict=fetcher.get_class_dict(), sweep=True)
+    validate_model(train, model="LSTM", test=None, class_dict=fetcher.get_class_dict(), sweep=True)
