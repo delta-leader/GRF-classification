@@ -30,29 +30,35 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
             },
-            "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
             },
-            #"filters1": {
-            #    "values": [10, 20, 30, 40, 50]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
-            "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
             },
-            #"kernel1": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -190,4 +196,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2,include_info=False)
 
-    validate_ResNet(train, test=None, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_ResNet(train, test=None, class_dict=fetcher.get_class_dict(), sweep=True)
