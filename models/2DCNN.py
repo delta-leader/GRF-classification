@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 2Layer(1DKernel) - Hyperparameter",
+        "name": "2DCNN Sweep 2Layer(dilated) - Hyperparameter",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -159,32 +159,32 @@ def create_config():
     config = {
         "input_shape": "TS1",
         "layers": 2,
-        "filters0": 63,
-        "filters1": 20,
+        "filters0": 92,
+        "filters1": 134,
         "filters2": 32,
-        "kernel0_0": 4,
-        "kernel0_1": 1,
-        "kernel1_0": 1,
-        "kernel1_1": 4,
+        "kernel0_0": 14,
+        "kernel0_1": 5,
+        "kernel1_0": 3,
+        "kernel1_1": 3,
         "kernel2_0": 3,
         "kernel2_1": 3,
         "stride0_0": 1,
         "stride0_1": 1,
         "stride1_0": 1,
         "stride1_1": 1,
-        "dilation0_0": 1,
+        "dilation0_0": 18,
         "dilation0_1": 1,
-        "dilation1_0": 1,
-        "dilation1_1": 1,
-        "batch_normalization": True,
+        "dilation1_0": 9,
+        "dilation1_1": 2,
+        "batch_normalization": False,
         "pool_type": "max",
-        "pool_size0": 5,
-        "pool_size1": 2,
+        "pool_size0": 2,
+        "pool_size1": 3,
         "pool_stride": None,
-        "neurons": 162,
-        "dropout_cnn": 0.2036748468533795,
-        "dropout_mlp": 0.1947303088468182,
-        "skipConnections": True,
+        "neurons": 154,
+        "dropout_cnn": 0.300265463619231,
+        "dropout_mlp": 0.2766440793017383,
+        "skipConnections": False,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
@@ -357,4 +357,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_2DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_2DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())

@@ -24,36 +24,55 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "LSTM-FCN Sweep",
-        "method": "grid",
+        "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
+            "units": {
+                "distribution": "uniform",
+                "min": 8,
+                "max": 128
             },
-            "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
+            "squeeze_and_excite":{
+                "distribution": "categorical",
+                "values": [True, False]
             },
-            #"filters1": {
-            #    "values": [10, 20, 30, 40, 50]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
-            "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
+            "dim_shuffle":{
+                "distribution": "categorical",
+                "values": [True, False]
             },
-            #"kernel1": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
+            },
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
+            },
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
+            },
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 300
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -142,7 +161,6 @@ def create_LSTMFCN(input_shape, config):
         lstm = permute_dimensions(input_layer, (0, 2, 1))
     else:
         lstm = input_layer
-    print(lstm.shape)
     lstm = LSTM(units=config.units, activation=config.activation_lstm, kernel_regularizer=config.regularizer, dropout=config.dropout_lstm, return_sequences=False)(lstm)
 
     # concatenate
@@ -191,8 +209,8 @@ def validate_LSTMFCN(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN)
     
     else:
-        #filepath = "./output/LSTMFCN"
-        filepath = "models/output/MLP/WandB/LSTMFCN"
+        filepath = "./output/LSTMFCN"
+        #filepath = "models/output/MLP/WandB/LSTMFCN"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -207,8 +225,8 @@ def validate_LSTMFCN(train, test=None, class_dict=None, sweep=False):
 
 
 if __name__ == "__main__":
-    #filepath = "../.."
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../.."
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
