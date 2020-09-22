@@ -286,6 +286,8 @@ def _get_keys(data):
             'affected_val' (optional) : 3-dimensional ndarray of shape num_samples x time_steps x channels
             'non_affected_val' (optional) : 3-dimensional ndarray of shape num_samples x time_steps x channels
             'label_val' (optional): ndarray of shape num_samples
+            'info' (optional): pandas DataFrame containing additional information about the data
+            'info_val' (optional): pandas DataFrame containing additional information about the validation-set
 
     ----------
     Returns:
@@ -311,6 +313,10 @@ def _get_keys(data):
     key_list.remove("label")
     if "label_val" in key_list:
         key_list.remove("label_val")
+    if "info" in key_list:
+        key_list.remove("info")
+    if "info_val" in key_list:
+        key_list.remove("info_val")
 
     return key_list
 

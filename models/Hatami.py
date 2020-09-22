@@ -1,35 +1,284 @@
 import os.path, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
-import pandas as pd
-import numpy as np
+import tensorflow.keras
+import wandb
+from collections import namedtuple
 
-from DataFetcher import DataFetcher, filter_out_val_set
+from DataFetcher import DataFetcher
 from GRFScaler import GRFScaler
-from ModelTester import ModelTester, create_heatmap, normalize_per_component
+from ModelTester import ModelTester, resetRand, wandb_init
 from GRFImageConverter import GRFImageConverter
 from ImageFilter import ImageFilter
 
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, Conv2D, Input
-from tensorflow.keras.applications import ResNet50, Xception
-#from tensorflow.keras.optimizers import Adam
 
-RAND_SEED = 1
-from tensorflow import random as tfrand
-from numpy.random import seed
-tfrand.set_seed(RAND_SEED)
-seed(RAND_SEED)
-os.environ['TF_DETERMINISTIC_OPS'] = '1'
-from tensorflow.keras import backend
+def create_sweep_config():
+    """Creates the configuration file with the settings used for a sweep in W&B
+
+    Returns:
+    sweep_config : dict
+        Contains the configuration for the sweep.
+    """
+
+    sweep_config = {
+        "name": "IMG Sweep",
+        "method": "bayes",
+        "description": "Find the optimal hyperparameters.",
+        "metric": {
+            "name": "val_accuracy",
+            "goal": "maximize"
+        },
+        "parameters": {
+            "filters0": {
+                "distribution": "int_uniform",
+                "min": 16,
+                "max": 64
+            },
+            "filters1": {
+                "distribution": "int_uniform",
+                "min": 16,
+                "max": 64
+            },
+            "kernel0": {
+                "distribution": "int_uniform",
+                "min": 3,
+                "max": 10
+            },
+            "kernel1": {
+                "distribution": "int_uniform",
+                "min": 3,
+                "max": 10
+            },
+            "dropout_cnn": {
+                "distribution": "uniform",
+                "min": 0.1,
+                "max": 0.5
+            },
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.3,
+                "max": 0.6
+            },
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
+            #},
+        }
+    }
+
+    return sweep_config
 
 
-def resetRand():
-    """Resets the random number generators to the inital seed."""
-    backend.clear_session()
-    tfrand.set_seed(RAND_SEED)
-    seed(RAND_SEED)
-    os.environ['TF_DETERMINISTIC_OPS'] = '1'
+def create_config():
+    """Creates the configuration file with the settings for the CNN network described in
+    "Classification of Time-Series Images Using Deep Convolutional Neural Networks" (Hatami et al., 2017).
+    """
+
+    config = {
+        "layers": 2,
+        "filters0": 32,
+        "filters1": 32,
+        "kernel0": 3,
+        "kernel1": 3,
+        "padding": "valid",
+        "pool_size": 2,
+        "dropout_cnn": 0.25,
+        "neurons": 128,
+        "dropout_mlp": 0.5,
+        "activation": "relu",
+        "final_activation": "softmax",
+        "regularizer": None,
+        "optimizer": "adam",
+        "learning_rate": 0.001,
+        "beta_1": 0.9,
+        "beta_2": 0.999,
+        "epsilon": 1e-08,
+        "amsgrad": False,
+        "batch_size": 32,
+        "epochs": 100,
+        "gpu": True
+    }
+
+    return config
+
+def create_IMG(input_shape, config):
+    """Creates FCN network according to the specifications in
+    "Classification of Time-Series Images Using Deep Convolutional Neural Networks" (Hatami et al., 2017)
+     and the settings obtained from 'config'
+
+    Parameters:
+    input_shape : tupel of int
+        Specifies the size of the Input (aka the first) layer.
+
+    config: Either wandb.config or namedtuple
+        Contains the specifications for the model (i.e. number of layers, number of neurons, rate of dropout, etc.).
+
+    ----------
+    model : tensorflow.keras.model
+        The model created according to the specifications.
+    """
+    
+    model = Sequential()
+    model.add(Input(shape=input_shape))
+
+    # add cnn layers
+    for layer in range(config.layers):
+        model.add(Conv2D(filters=getattr(config, "filters{}".format(layer)), kernel_size=getattr(config, "kernel{}".format(layer)), strides=1, activation=config.activation, kernel_regularizer=config.regularizer, padding=config.padding))
+        model.add(MaxPooling2D(pool_size=config.pool_size))
+        model.add(Dropout(config.dropout_cnn))
+
+    model.add(Flatten())
+    model.add(Dense(config.neurons, activation=config.activation, kernel_regularizer=config.regularizer))
+    model.add(Dropout(rate=config.dropout_mlp))
+    model.add(Dense(5, activation=config.final_activation, kernel_regularizer=config.regularizer))
+    
+    return model
+
+
+def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
+    """Trains and tests the network as defined in 
+    "Classification of Time-Series Images Using Deep Convolutional Neural Networks" (Hatami et al., 2017).
+    Two modes are available:
+    'sweep' == True -> performs a sweep of hyperparameters according to the specified sweep-configuration.
+    'sweep' == False -> Performs a single training and evaluation (on test and validation set) according to the configured settings. Includes creationg of plots and confusion matrices.
+
+    Parameters:
+    train : dict
+        Containing the GRF-data for training and validation.
+
+    conv_args : dict
+        Containing the parameters used for the image conversions.
+    
+    test : dict, default=None
+        Containing the GRF-data for the test-set.
+    
+    class_dict: dict, default=None
+        Dictionary that maps the numbered labels to names. Used to create the confusion matrix.
+
+    sweep : bool, default=False
+        If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
+        Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
+
+    ----------
+    Raises:
+    ValueError : if sweep is False and the conversion-argument sweep is set to True. This configuration is invalid.
+    """
+
+    if not sweep and conv_args["sweep"]:
+        raise ValueError("Incoherent configuration, sweep-mode is not specified but set in the conversion-arguments.")
+
+    converter = GRFImageConverter()
+    if conv_args["gpu"]:
+        converter.enableGpu()
+
+    img_train = train
+    img_test = test
+    if not conv_args["sweep"]:
+        imgFilter=None
+        if conv_args["filter"] is not None:
+            imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
+        img_train = converter.convert(img_train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
+        img_train["label"] = train["label"]
+        if "label_val" in train.keys():
+            img_train["label_val"] = train["label_val"]
+        if img_test is not None:
+            img_test = converter.convert(img_test, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args, imgFilter=imgFilter)
+            img_test["label"] = test["label"]
+
+    img = conv_args["images"][0]
+    count = len(conv_args["images"])
+      
+    if sweep:
+        sweep_config = create_sweep_config()
+        tester = ModelTester(class_dict=class_dict)
+
+        def trainNN():
+            config = wandb_init(create_config())
+            resetRand()
+            if conv_args["sweep"]:
+                conv_args = {
+                    "images": config.images,
+                    
+                }
+                img = conv_args["images"][0]
+                count = len(conv_args["images"])
+                imgFilter = None
+                if config.filter is not None:
+                    imgFilter = ImageFilter(config.filter, config.filter_size)
+                img_train = converter.convert(img_train, conversions=get_conv_images(config.images), conv_args=conv_args, imgFilter=imgFilter)
+                img_train["label"] = train["label"]
+                if "label_val" in train.keys():
+                    img_train["label_val"] = train["label_val"]
+
+            model = create_IMG(input_shape=(img_train["affected"][img].shape[1], img_train["affected"][img].shape[2], img_train["affected"][img].shape[3]*count*2), config=config)
+            tester.perform_sweep(model, config, img_train, shape="IMG_STACK", images=config.images, useNonAffected=True)
+            
+        sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
+        wandb.agent(sweep_id, function=trainNN)
+    
+    else:
+        filepath = "./output/FCN"
+        #filepath = "models/output/MLP/WandB/FCN"
+        config = create_config()
+        config = namedtuple("Config", config.keys())(*config.values())
+        tester = ModelTester(filepath=filepath, class_dict=class_dict)
+        resetRand()
+        model = create_IMG(input_shape=(img_train["affected"][img].shape[1], img_train["affected"][img].shape[2], img_train["affected"][img].shape[3]*count*2), config=config)
+        tester.save_model_plot(model, "IMG_model.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=img_train, images=conv_args["images"], config=config, test=img_test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
+        print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
+
+
+def get_conv_images(images):
+    """Extracts the correct conversion list from a list of image.
+    If either 'gadf' or 'gasf' are present in the list, they are replaced by 'gadf'.
+
+    Parameters:
+    images : list
+        The list of images to be used for the classification.
+
+    ----------
+    Returns:
+    img : list
+        The list of transformations to compute.
+    """
+
+    img = []
+    if "gadf" in images or "gasf" in images:
+        img += ["gaf"]
+    if "mtf" in images:
+        img += ["mtf"]
+    if "rcp" in images:
+        img += ["rcp"]
+
+    return img
 
 
 def get_HatamiModel(input_shape, kernel_sizes=[(3,3), (3,3)], num_filters=[32, 32], neurons=128, activation="relu", final_activation="softmax", kernel_regularizer=None):
@@ -103,50 +352,23 @@ def test_ResNet(train, test, class_dict):
     print("Accuracy {}, ValAccuracy: ,{}".format(acc, val_acc))
 
 
-def rotate_and_stack(data, images, rot=[1,2,3]):
-    keys = ["affected", "non_affected"]
-    if "affected_val" in data.keys():
-        keys += ["affected_val", "non_affected_val"]
-    print(keys)
-    for key in keys:
-        for image in images:
-            for i in rot:
-                new = np.copy(data[key][image])
-                np.rot90(new, i, axes=[1,2])
-                data[key][image]= np.concatenate([data[key][image], new], axis=-1)
-        print(data[key][image].shape)
-
 
 if __name__ == "__main__":
     filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
-    converter = GRFImageConverter()
-    converter.enableGpu()
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
     
-
-
-    #train_all = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=False, val_setp=0.0, include_info=True)
-    train, test = fetcher.fetch_data(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
     conv_args = {
+        "sweep": False,
+        "gpu": True,
+        "images": ["gadf"],
+        "filter": None,
+        "filter_size": 7,
         "num_bins": 20,
-         "range": (-1, 1),
-         "dims": 3,
-         "delay": 4,
-         "metric": "euclidean"
+        "range": (-1, 1),
+        "dims": 3,
+        "delay": 4,
+        "metric": "euclidean"
     }
-
-    #imgFilter = ImageFilter("median", (7,7))
-    gaf_train = converter.convert(train, conversions=["gaf", "mtf"], conv_args=conv_args)
-    gaf_test = converter.convert(test, conversions=["gaf", "mtf"], conv_args=conv_args)
-
-    #rotate_and_stack(gaf_train, ["gasf"], [3])
-    #rotate_and_stack(gaf_test, ["gasf"], [3])
-
-    gaf_train["label"] = train["label"]
-    gaf_train["label_val"] = train["label_val"]
-    gaf_test["label"] = test["label"]
-
-
-    test_HatamiModel(gaf_train, gaf_test, fetcher.get_class_dict())
-    #test_ResNet(gaf_train, gaf_test, fetcher.get_class_dict())
+    validate_IMG(train, conv_args=conv_args, class_dict=fetcher.get_class_dict(), sweep=False)

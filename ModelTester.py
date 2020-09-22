@@ -98,7 +98,7 @@ class ModelTester(object):
         plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True)
 
 
-    def perform_sweep(self, model, config, train, shape="1D", useNonAffected=True, loss=None, metrics=None):
+    def perform_sweep(self, model, config, train, shape="1D", images=None, useNonAffected=True, loss=None, metrics=None):
         """Performs a single sweep across the parameters set defined in the configuration file of W&B
 
         Parameters:
@@ -149,8 +149,8 @@ class ModelTester(object):
         # verify that all necessary datasets are there
         _check_keys(train, useNonAffected, True)
 
-        train_data = _extract_data_from_dict(train, val_set=False, useNonAffected=useNonAffected, shape=shape)
-        val_data = _extract_data_from_dict(train, val_set=True, useNonAffected=useNonAffected, shape=shape)
+        train_data = _extract_data_from_dict(train, val_set=False, useNonAffected=useNonAffected, shape=shape, images=images)
+        val_data = _extract_data_from_dict(train, val_set=True, useNonAffected=useNonAffected, shape=shape, images=images)
 
         # get default values
         loss, metrics = self.__check_for_default(loss, metrics)
@@ -159,7 +159,7 @@ class ModelTester(object):
         model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[WandbCallback(monitor='val_accuracy')])
 
 
-    def test_model(self, model, train, config, shape="1D", groups=1, train_norm_dict=None, test_norm_dict=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
+    def test_model(self, model, train, config, shape="1D", images=None, groups=1, train_norm_dict=None, test_norm_dict=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
         #TODO
         """Compiles and fits the model accurding to the specified settings.
         A summary of the model and it's output are saved to the specified logfile.
@@ -257,7 +257,7 @@ class ModelTester(object):
             # verify that all necessary datasets are there
             _check_keys(test, useNonAffected, False)
 
-            test_data = _extract_data_from_dict(test, val_set=False, useNonAffected=useNonAffected, shape=shape)
+            test_data = _extract_data_from_dict(test, val_set=False, useNonAffected=useNonAffected, shape=shape, images=images)
         """
         if test_dict is not None:
             if not isinstance(test_dict, dict):
@@ -298,8 +298,8 @@ class ModelTester(object):
         _check_keys(train, useNonAffected, True)
 
         # extract train data
-        train_data = _extract_data_from_dict(train, val_set=False, useNonAffected=useNonAffected, shape=shape)
-        val_data = _extract_data_from_dict(train, val_set=True, useNonAffected=useNonAffected, shape=shape)
+        train_data = _extract_data_from_dict(train, val_set=False, useNonAffected=useNonAffected, shape=shape, images=images)
+        val_data = _extract_data_from_dict(train, val_set=True, useNonAffected=useNonAffected, shape=shape, images=images)
         """
         train_data = data_dict["affected"]
         val_data = data_dict["affected_val"]
@@ -821,7 +821,7 @@ def _check_keys(data_dict, useNonAffected, val_set):
             raise ValueError("Key '{}' not available in the provided data-dictionary.".format(key))
 
 
-def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
+def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape, images):
     """Extracts the data needed for training/validation from the given dictionary, according to the settings.
     If 'usNonAffected' is true the data for the non_affected side is added according to the argument specified in 'shape'
     Possible modes are:
@@ -831,6 +831,8 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     'shape' == '2D_SST' : Data format is changed to that the first two dimensions correspond to the signals an the last is the time (i.e. 2 x 5 x time-steps). Only valid if data for the non-affected side is used.
     'shape' == '2D_TLS' : Data format is changed to that the first dimension is time, the second is the leg and the last is the signals (i.e. time-steps x 2 x 5). Only valid if data for the non-affected side is used.
     'shape' == '2D_TSL' : Data format is changed to that the first dimension is time, the second is the signals and the last is the leg (i.e. time-steps x 5 x 2). Only valid if data for the non-affected side is used.
+    'shape' == 'IMG_STACK' : Data format in which all transformed images are stacked along the last axis, resulting in width x height x singals * number of images
+    'shape' == 'IMG_ARR': Data format in which all transformed images are arranged in TODO
 
     Parameters:
     data_dict : dictionary
@@ -845,6 +847,9 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     shape : string
         Specifies the purpose of the output shape.
         Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D, '2D_TLS' & '2D_TSL' used for comparison in 2DCNN)
+    
+    images : list
+        Specifies the list of images to use in case of shape being equal to 'IMG_STACK' or 'IMG_ARR'.
 
     ----------
     Returns:
@@ -855,22 +860,39 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape):
     Raises:
     ValueError : If shape is not one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.
     ValueError : If shape is '2D_SST', '2D_TLS' or '2D_TSL' and useNonAffected is False (can not arrange the channels in 2 dimensions in such a case).
+    Value Error : If shape is 'IMG_STACK' or 'IMG_ARR' and 'images' is None or empty.
+    ValueError : If shape is 'IMG_STACK' or 'IMG_ARR' and one of the images in not available in the dataset.
     """
 
-    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST", "2D_TLS", "2D_TSL"]:
+    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST", "2D_TLS", "2D_TSL", "IMG_STACK", "IMG_ARR"]:
         raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S', '2D_SST' '2D_TLS' or '2DTSL'.".format(shape))
 
     val_suffix = ""
     if val_set:
         val_suffix = "_val"
 
-    data_keys = ["affected", "label"]
+    # Image data
+    if shape in ["IMG_STACK", "IMG_ARR"]:
+        if not isinstance(images, list) or len(images) < 1:
+            raise ValueError("For using the image format (starting with IMG), a list of valid images to be used needs to be specified.")
+
+        first_image = True
+        for image in images:
+            if image not in data_dict["affected"+val_suffix].keys():
+                raise ValueError("Image '{}' not available in data".format(image))
+            if first_image:
+                data = data_dict["affected"+val_suffix][image]
+                first_image = False
+            else:
+                data = np.concatenate([data, data_dict["affected"+val_suffix][image]], axis=-1)
+            if useNonAffected:
+                data = np.concatenate([data, data_dict["non_affected"+val_suffix][image]], axis=-1)
         
-    if useNonAffected:
-        data_keys += ["non_affected"]
+        return data
 
     data = data_dict["affected"+val_suffix]
 
+    # 2D data
     if shape in ["2D_SST", "2D_TLS", "2D_TSL"]:
         if not useNonAffected:
             raise ValueError("Shape '2DSST' can only be applied if the data from the non-affected side is used.")
