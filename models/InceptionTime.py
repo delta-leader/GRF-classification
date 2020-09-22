@@ -23,36 +23,47 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "InceptionTime Sweep",
-        "method": "grid",
+        "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
         },
         "parameters": {
-            "layers": {
-                "value": 1
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
             },
-            "filters0": {
-                "values": [10, 20, 30, 40, 50]
-                #"min": 40,
-                #"max": 190
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
             },
-            #"filters1": {
-            #    "values": [10, 20, 30, 40, 50]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
-            "kernel0": {
-                "values": [(3), (5), (7), (9), (11), (13), (15)]
-                #"min": 40,
-                #"max": 190
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
             },
-            #"kernel1": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
-            #    #"min": 40,
-            #    #"max": 190
-            #},
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
+            "bottleneck_size":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 10
+            },
         }
     }
 
@@ -67,9 +78,9 @@ def create_config():
     config = {
         "blocks": 2,
         "layers": 3,
-        "bottleneck_size": 10, 
+        "bottleneck_size": 5, 
         "nb_filters": 32,
-        "kernel_sizes": [16, 8, 4],
+        "kernel_sizes": [10, 20, 40],
         "stride": 1,
         "pool_size": 3,
         "padding": "same",
@@ -209,4 +220,4 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2,include_info=False)
 
-    validate_InceptionTime(train, test=None, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_InceptionTime(train, test=None, class_dict=fetcher.get_class_dict(), sweep=True)
