@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "IMG Sweep",
+        "name": "IMG Sweep - Hyperparameters",
         "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -31,65 +31,65 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "filters0": {
-                "distribution": "int_uniform",
-                "min": 16,
-                "max": 64
-            },
-            "filters1": {
-                "distribution": "int_uniform",
-                "min": 16,
-                "max": 64
-            },
-            "kernel0": {
-                "distribution": "int_uniform",
-                "min": 3,
-                "max": 10
-            },
-            "kernel1": {
-                "distribution": "int_uniform",
-                "min": 3,
-                "max": 10
-            },
-            "dropout_cnn": {
-                "distribution": "uniform",
-                "min": 0.1,
-                "max": 0.5
-            },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.3,
-                "max": 0.6
-            },
-            #"learning_rate":{
-            #    "distribution": "uniform",
-            #    "min": 0.0001,
-            #    "max": 0.01
-            #},
-            #"beta_1":{
-            #    "distribution": "uniform",
-            #    "min": 0.5,
-            #    "max": 0.99
-            #},
-            #"beta_2":{
-            #    "distribution": "uniform",
-            #    "min": 0.6,
-            #    "max": 0.999
-            #},
-            #"amsgrad":{
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"epochs":{
+            #"filters0": {
             #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 200
+            #    "min": 16,
+            #    "max": 64
             #},
-            #"batch_size":{
+            #"filters1": {
             #    "distribution": "int_uniform",
-            #    "min": 8,
-            #    "max": 512
+            #    "min": 16,
+            #    "max": 64
             #},
+            #"kernel0": {
+            #    "distribution": "int_uniform",
+            #    "min": 3,
+            #    "max": 10
+            #},
+            #"kernel1": {
+            #    "distribution": "int_uniform",
+            #    "min": 3,
+            #    "max": 10
+            #},
+            #"dropout_cnn": {
+            #    "distribution": "uniform",
+            #    "min": 0.1,
+            #    "max": 0.5
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.3,
+            #    "max": 0.6
+            #},
+            "learning_rate":{
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.01
+            },
+            "beta_1":{
+                "distribution": "uniform",
+                "min": 0.5,
+                "max": 0.99
+            },
+            "beta_2":{
+                "distribution": "uniform",
+                "min": 0.6,
+                "max": 0.999
+            },
+            "amsgrad":{
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "epochs":{
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 200
+            },
+            "batch_size":{
+                "distribution": "int_uniform",
+                "min": 8,
+                "max": 512
+            },
         }
     }
 
@@ -103,15 +103,15 @@ def create_config():
 
     config = {
         "layers": 2,
-        "filters0": 32,
+        "filters0": 61,
         "filters1": 32,
-        "kernel0": 3,
-        "kernel1": 3,
+        "kernel0": 4,
+        "kernel1": 4,
         "padding": "valid",
         "pool_size": 2,
-        "dropout_cnn": 0.25,
+        "dropout_cnn": 0.36603079773990754,
         "neurons": 128,
-        "dropout_mlp": 0.5,
+        "dropout_mlp": 0.3327475305569613,
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
@@ -341,4 +341,4 @@ if __name__ == "__main__":
     if "label_val" in train.keys():
         img_train["label_val"] = train["label_val"]
 
-    validate_IMG(img_train, class_dict=fetcher.get_class_dict(), sweep=True)
+    validate_IMG(img_train, class_dict=fetcher.get_class_dict(), sweep=False)
