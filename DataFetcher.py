@@ -1188,7 +1188,7 @@ def _assert_scale(concat_data, scaler):
 
 
 def set_valSet(data, filter_data, parse=None):
-    """Incase that a pre-defined validation set should be used (for example if it has been extracted previously), this function deletes all samples from data that correspond
+    """In case that a pre-defined validation set should be used (for example if it has been extracted previously), this function deletes all samples from data that correspond
     to an entry in the validation-set of 'filter_data.' based on the 'SUBJECT_ID'.
     There are three modes of operations: 
     'parse' == None: The validation-of 'filter_data' should become the new validation-set of 'data'.
