@@ -11,7 +11,7 @@ from GRFImageConverter import GRFImageConverter
 from ImageFilter import ImageFilter
 
 from tensorflow.keras import Input
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, Conv2D, Input
 
 def create_sweep_config():
@@ -331,7 +331,8 @@ if __name__ == "__main__":
         "metric": "euclidean"
     }
     converter = GRFImageConverter()
-    converter.enableGpu()
+    #if this is used with sweep, tensorflow will use the CPU
+    #converter.enableGpu()
     imgFilter = None
     if conv_args["filter"] is not None:
         imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])

@@ -121,6 +121,8 @@ class ModelTester(object):
             - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
             - '2D_TLS' : time_steps x 2 x 5 (only possible when useNonAffected is True, arranges the channels in two rows, first affected, than non_affected)
             - '2D_TSL': time_steps x 5 x 2 (only possible when useNonAffected is True, arranges the channels in two columns, first affected, than non_affected)
+            - 'IMG_STACK' : Data format in which all transformed images are stacked along the last axis, resulting in width x height x singals * number of images
+            - None : No transformation necessary, data is ready-to-use.
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for the sweep.
@@ -138,11 +140,9 @@ class ModelTester(object):
         TypeError : If 'train' is not a dicitionary.
         ValueError : If one of the necessary keys is not available in the dictionaries.
         ValueError : If shape is '2D_SST' and the non-affected data is not used.
-        TODO
-        ValueError : If 'groups' is not one of [1, 2].
-        ValueError : If 'groups' > 1 and non-affected data is not used.
         """
 
+        
         if not isinstance(train, dict):
             raise TypeError("Training-data was not provided as a dictionary.")
        
@@ -159,7 +159,7 @@ class ModelTester(object):
         model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[WandbCallback(monitor='val_accuracy')])
 
 
-    def test_model(self, model, train, config, shape="1D", images=None, groups=1, train_norm_dict=None, test_norm_dict=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
+    def test_model(self, model, train, config, shape="1D", images=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
         #TODO
         """Compiles and fits the model accurding to the specified settings.
         A summary of the model and it's output are saved to the specified logfile.
@@ -185,6 +185,8 @@ class ModelTester(object):
             - '2D_SST' : 2 x 5 x time_steps (only possible when useNonAffected is True, arranges the data in two rows, first affected, than non_affected)
             - '2D_TLS' : time_steps x 2 x 5 (only possible when useNonAffected is True, arranges the channels in two rows, first affected, than non_affected)
             - '2D_TSL': time_steps x 5 x 2 (only possible when useNonAffected is True, arranges the channels in two columns, first affected, than non_affected)
+            - 'IMG_STACK' : Data format in which all transformed images are stacked along the last axis, resulting in width x height x singals * number of images
+            - None : No transformation necessary, data is ready-to-use.
 
         useNonAffected : bool, default=True
             If False, only the data from the affected side is used for training and testing.
@@ -194,17 +196,11 @@ class ModelTester(object):
             Must contain at least the keys 'affected' and 'label'.
             If useNonAffected is True must also contain the key 'non_affected'.
 
-        optimizer : tf.keras.optimizers.Optimizer, default=None
-            The optimizer to be used. If None, the default optimizer of the instance is used.
-
         loss : string, default=None
             The loss-function to be used. If None, the default loss-function of the instance is used.
 
         metrics : list of string, None
             The metrics to be recorded. If None, the default metrics of the instance are used.
-
-        epochs : int, default=None
-            The number of epochs to train the model for. If None, the default number of epochs of the instance is used.
 
         batch_size : int, default=Non
             The number of samples processed within a single batch. If None, the default batch_sie of the instance is used.
@@ -234,22 +230,11 @@ class ModelTester(object):
         TypeError : If 'data_dict' or 'test_dict' are no dictionaries.
         ValueError : If one of the necessary keys is not available in one of the dictionaries.
         ValueError : If shape is '2D_SST' and the non-affected data is not used.
-        ValueError : If 'groups' is not one of [1, 2].
-        ValueError : If 'groups' > 1 and non-affected data is not used.
         """
 
         if not isinstance(train, dict):
             raise TypeError("Training-data was not provided as a dictionary.")
-        
-        """TODO
-        
-        if groups not in [1, 2]:
-            raise ValueError("Unsupported value for 'groups' ({}) please use one of {}.".format(groups, [1, 2]))
-
-        if groups > 1 and not useNonAffected:
-            raise ValueError("Creating 2 groups (affected/non-affected) requires the usage of non-affected data.")
-        """
-        
+               
         # extract test data
         if test is not None:
             if not isinstance(test, dict):
@@ -258,41 +243,6 @@ class ModelTester(object):
             _check_keys(test, useNonAffected, False)
 
             test_data = _extract_data_from_dict(test, val_set=False, useNonAffected=useNonAffected, shape=shape, images=images)
-        """
-        if test_dict is not None:
-            if not isinstance(test_dict, dict):
-                raise TypeError("Test-data was not provided as a dictionary.")
-            keys = ["affected", "label"]
-            if useNonAffected:
-                keys += ["non_affected"]
-            _check_keys(keys, test_dict)
-            test_data = test_dict["affected"]
-            if test_norm_dict is not None:
-                test_norm_data = test_norm_dict["affected"]
-            if useNonAffected:
-                if groups == 2:
-                    if test_norm_dict is not None:
-                        test_data = np.concatenate([test_data, test_dict["non_affected"]], axis=-1)
-                        test_norm_data = np.concatenate([test_norm_data, test_norm_dict["non_affected"]], axis=-1)
-                        test_data = [test_data, test_norm_data]
-                    else:
-                        test_data = [test_dict["affected"], test_dict["non_affected"]]
-                else:
-                    if shape == "1D":
-                        test_data = np.concatenate([test_data, test_dict["non_affected"]], axis=-1)
-                    else:
-                        if shape =="2D_TxS":
-                            test_data = np.concatenate([test_data, test_dict["non_affected"]], axis=-1)
-                            test_data = np.expand_dims(test_data, axis=-1)
-                        else:
-                            if shape=="2D_Tx1xS":
-                                test_data = np.concatenate([test_data, test_dict["non_affected"]], axis=-1)
-                                test_data = np.expand_dims(test_data, axis=-2)
-                            
-                            else:
-                                test_data = np.stack([test_data, test_dict["non_affected"]], axis=1)
-                                test_data = np.swapaxes(test_data, -2, -1)
-        """
 
         # verify that all necessary datasets are there
         _check_keys(train, useNonAffected, True)
@@ -300,46 +250,6 @@ class ModelTester(object):
         # extract train data
         train_data = _extract_data_from_dict(train, val_set=False, useNonAffected=useNonAffected, shape=shape, images=images)
         val_data = _extract_data_from_dict(train, val_set=True, useNonAffected=useNonAffected, shape=shape, images=images)
-        """
-        train_data = data_dict["affected"]
-        val_data = data_dict["affected_val"]
-        if train_norm_dict is not None:
-            train_norm_data = train_norm_dict["affected"]
-            val_norm_data = train_norm_dict["affected_val"]
-        if useNonAffected:
-            if groups == 2:
-                if train_norm_dict is not None:
-                    train_data = np.concatenate([train_data, data_dict["non_affected"]], axis=-1)
-                    val_data = np.concatenate([val_data, data_dict["non_affected_val"]], axis=-1)
-                    train_norm_data = np.concatenate([train_norm_data, train_norm_dict["non_affected"]], axis=-1)
-                    val_norm_data = np.concatenate([val_norm_data, train_norm_dict["non_affected_val"]], axis=-1)
-                    train_data = [train_data, train_norm_data]
-                    val_data = [val_data, val_norm_data]
-                else:
-                    train_data = [data_dict["affected"], data_dict["non_affected"]]
-                    val_data = [data_dict["affected_val"], data_dict["non_affected_val"]]
-            else:
-                if shape == "1D":
-                    train_data = np.concatenate([train_data, data_dict["non_affected"]], axis=-1)
-                    val_data = np.concatenate([val_data, data_dict["non_affected_val"]], axis=-1)
-                else:
-                    if shape == "2D_TxS":
-                            train_data = np.concatenate([train_data, data_dict["non_affected"]], axis=-1)
-                            train_data = np.expand_dims(train_data, axis=-1)
-                            val_data = np.concatenate([val_data, data_dict["non_affected_val"]], axis=-1)
-                            val_data = np.expand_dims(val_data, axis=-1)
-                    else:
-                        if shape == "2D_Tx1xS":
-                            train_data = np.concatenate([train_data, data_dict["non_affected"]], axis=-1)
-                            train_data = np.expand_dims(train_data, axis=-2)
-                            val_data = np.concatenate([val_data, data_dict["non_affected_val"]], axis=-1)
-                            val_data = np.expand_dims(val_data, axis=-2)
-                        else:
-                            train_data = np.stack([train_data, data_dict["non_affected"]], axis=1)
-                            val_data = np.stack([val_data, data_dict["non_affected_val"]], axis=1)
-                            train_data = np.swapaxes(train_data, -2, -1)
-                            val_data = np.swapaxes(val_data, -2, -1)
-        """
 
         # get default values
         loss, metrics = self.__check_for_default(loss, metrics)
@@ -452,226 +362,6 @@ class ModelTester(object):
             metrics = self.metrics
 
         return loss, metrics
-        
-
-    def test_image_model(self, model, data_dict, images=["gasf", "gadf", "mtf", "rcp"], useNonAffected=True, test_dict=None, optimizer=None, loss=None, metrics=None, epochs=None, batch_size=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
-        """Compiles and fits the model for image data according to the specified settings.
-        A summary of the model and it's output are saved to the specified logfile.
-        Calculates the maximum loss and accuracy achieved by the model.
-        Optinally loss and accuracy can be saved/displayed as a plot.
-
-        A confusion matrix is created for the validation set (and optionally for the test set) and saved to the logfile.
-
-        Parameters:
-        model : tensorflow.keras.model
-            The model to compile and test.
-
-        data_dict : dict
-            Contains the GRF-data. Must at least contain the keys 'affected', 'affected_val', 'label' and 'label_val'.
-            Can optinally contain the data for the non_affected side under 'non_affected' and 'non_affected_val'
-
-        images : list, default=['gasf', 'gadf', 'mtf', 'rcp']
-            Specifies the images to be used for the model.
-            If multiple images are specified, the data is stacked along the channel axis.
-
-        useNonAffected : bool, default=True
-            If False, only the data from the affected side is used for training and testing.
-
-        test_dict : dict, default=None
-            Dictionary containing the test-set for the GRF-data.
-            Must contain at least the keys 'affected' and 'label'.
-            If useNonAffected is True must also contain the key 'non_affected'.
-
-        optimizer : tf.keras.optimizers.Optimizer, default=None
-            The optimizer to be used. If None, the default optimizer of the instance is used.
-
-        loss : string, default=None
-            The loss-function to be used. If None, the default loss-function of the instance is used.
-
-        metrics : list of string, None
-            The metrics to be recorded. If None, the default metrics of the instance are used.
-
-        epochs : int, default=None
-            The number of epochs to train the model for. If None, the default number of epochs of the instance is used.
-
-        batch_size : int, default=Non
-            The number of samples processed within a single batch. If None, the default batch_sie of the instance is used.
-
-        logfile : string, default="log.dat"
-            The name of the logfile to be saved.
-            The logfile is saved at the location specified in the 'filepath' of the instance.
-
-        model_name : string, default="Test-Model"
-            The nome of the model written at the beginning of the logfile.
-
-        plot_name : string, default="model.png"
-            The name of the plotfile to be saved
-            The plot is saved at the location specified in the 'filepath' of the instance.
-        
-        create_plot : bool, default=True
-            If True, plots for accuracy and loss are created and saved under the name specified in 'plot_name'.
-
-        show_plot : bool, default=False
-            If True the plots are immediately displayed on creation (blocking).
-
-        ----------
-        Returns:
-
-        ----------
-        Raises:
-        TypeError : If 'data_dict' or 'test_dict' are no dictionaries.
-        TypeError : If 'images' is not a list
-        ValueError : If 'images' does not contain at least 1 entry.
-        ValueError : If one of the necessary keys is not available in one of the dictionaries.
-        ValueError : If the specified images are not available in the dictionary.
-        """
-
-        if not isinstance(data_dict, dict):
-            raise TypeError("Data was not provided as a dictionary.")
-
-        if not isinstance(images, list):
-            raise TypeError("Image formats were not provided as a list.")
-
-        if len(images) < 1:
-            raise ValueError("At least one image-format to use must be specified.")
-       
-        # extract test data
-        if test_dict is not None:
-            if not isinstance(test_dict, dict):
-                raise TypeError("Test-data was not provided as a dictionary.")
-            
-            _check_keys(["affected", "label"], test_dict)
-            _check_keys(images, test_dict["affected"])
-            if useNonAffected:
-                _check_keys(["non_affected"], test_dict)
-                _check_keys(images, test_dict["non_affected"])
-  
-            first_image = True
-            for image in images:
-                if first_image:
-                    test_data = test_dict["affected"][image]
-                    first_image = False
-                else :
-                    test_data = np.concatenate([test_data, test_dict["affected"][image]], axis=-1)
-                if useNonAffected:
-                    test_data = np.concatenate([test_data, test_dict["non_affected"][image]], axis=-1)
-
-
-        _check_keys(["affected", "affected_val", "label", "label_val"], data_dict)
-        _check_keys(images, data_dict["affected"])
-        if useNonAffected:
-            _check_keys(["non_affected", "non_affected_val"], data_dict)
-            _check_keys(images, data_dict["non_affected"])
-        
-        first_image = True
-        for image in images:
-            if first_image:
-                train_data = data_dict["affected"][image]
-                val_data = data_dict["affected_val"][image]
-                first_image = False
-            else:
-                train_data = np.concatenate([train_data, data_dict["affected"][image]], axis=-1)
-                val_data = np.concatenate([val_data, data_dict["affected_val"][image]], axis=-1)
-
-            if useNonAffected:
-                train_data = np.concatenate([train_data, data_dict["non_affected"][image]], axis=-1)
-                val_data = np.concatenate([val_data, data_dict["non_affected_val"][image]], axis=-1)
-
-
-        # get default values
-        if optimizer is None:
-            optimizer = self.optimizer
-        if loss is None:
-            loss = self.loss
-        if metrics is None:
-            metrics = self.metrics
-        if epochs is None:
-            epochs = self.epochs
-        if batch_size is None:
-            batch_size = self.batch_size
-
-        # Log settings
-        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-        logfile = open(self.filepath + logfile, "a")
-        logfile.write(model_name + ":\n")
-        logfile.write("Optimizer: {}, Loss: {}, Metrics: {}\n".format(optimizer, loss, metrics))
-        logfile.write("Training for {} epochs.\n\n".format(epochs))
-
-        # use the Logger to print to file & stdout
-        terminal = sys.stdout
-        sys.stdout = Logger(logfile)
-        print(model.summary())
-        print("\n\n")
-        # setting shuffle=False would disable shuffling before selecting batches -> yields slightly better results
-        train_history = model.fit(train_data, to_categorical(data_dict["label"]), validation_data=(val_data, to_categorical(data_dict["label_val"])), batch_size=batch_size, epochs=epochs, verbose=2)
-        sys.stdout = terminal
-
-        # calculate maximum accuracy
-        accuracy = max(train_history.history["accuracy"])
-        val_accuracy = max(train_history.history["val_accuracy"])
-        logfile.write("\nMaximum Accuracy for Train-Set: {} after {} epochs.\n".format(accuracy, train_history.history["accuracy"].index(accuracy)))
-        logfile.write("Maximum Accuracy for Validation-Set: {} after {} epochs.\n".format(val_accuracy, train_history.history["val_accuracy"].index(val_accuracy)))
-
-        # calculate minimum loss
-        loss = min(train_history.history["loss"])
-        val_loss = min(train_history.history["val_loss"])
-        logfile.write("Minimum Loss for Train-Set: {} after {} epochs.\n".format(loss, train_history.history["loss"].index(loss)))
-        logfile.write("Minimumm Loss for Validation-Set: {} after {} epochs.\n".format(val_loss, train_history.history["val_loss"].index(val_loss)))
-
-        # Plot accuracy and loss
-        if create_plot or show_plot:
-            self.__plot(train_history.history, plot_name, create_plot, show_plot, config.epochs)
-
-        # Confusion Matrix for validation-set
-        predicted_labels = np.argmax(model.predict(val_data, batch_size=batch_size), axis=1)
-        if boost:
-            if "info_val" not in data_dict.keys():
-                raise ValueError("Key 'info_val' is not available, boosting can not be used.")
-            logfile.write("\nConfusion Matrix for VALIDATION data (with boosting):\n")
-            info = data_dict["info_val"]
-            sessions = info['SESSION_ID'].unique()
-            predictions = []
-            labels = []
-            for session in sessions:
-                session_indices = np.where(info["SESSION_ID"]==session)[0]
-                session_pred = np.take(predicted_labels, session_indices, axis=0)
-                predictions.append(stats.mode(session_pred)[0][0])
-                session_labels = np.take(data_dict["label_val"], session_indices, axis=0)
-                assert np.all(session_labels == session_labels[0])
-                labels.append(session_labels[0])
-            _log_confusion_matrix(logfile, _create_confusion_matrix(np.array(predictions), np.array(labels)), self.class_dict)
-
-        else:
-            logfile.write("\nConfusion Matrix for VALIDATION data:\n")      
-            _log_confusion_matrix(logfile, _create_confusion_matrix(np.argmax(predicted_labels, axis=1), data_dict["label_val"]), self.class_dict)
-
-        # Confusion Matrix for test-set
-        if test_dict is not None:
-            predicted_labels = np.argmax(model.predict(test_data, batch_size=batch_size), axis=1)
-            if boost:
-                if "info" not in test_dict.keys():
-                    raise ValueError("Key 'info' is not availablein TEST-data, boosting can not be used.")
-                logfile.write("\nConfusion Matrix for TEST data (with boosting):\n")
-                info = test_dict["info"]
-                sessions = info['SESSION_ID'].unique()
-                predictions = []
-                labels = []
-                for session in sessions:
-                    session_indices = np.where(info["SESSION_ID"]==session)[0]
-                    session_pred = np.take(predicted_labels, session_indices, axis=0)
-                    predictions.append(stats.mode(session_pred)[0][0])
-                    session_labels = np.take(test_dict["label"], session_indices, axis=0)
-                    assert np.all(session_labels == session_labels[0])
-                    labels.append(session_labels[0])
-                _log_confusion_matrix(logfile, _create_confusion_matrix(np.array(predictions), np.array(labels)), self.class_dict)
-            
-            else:
-                logfile.write("\nConfusion Matrix for TEST data:\n")
-                _log_confusion_matrix(logfile, _create_confusion_matrix(np.argmax(predicted_labels, axis=1), test_dict["label"]), self.class_dict)
-
-        logfile.close()
-
-        return accuracy, loss, val_accuracy, val_loss
 
 
     def __plot(self, history, plot_name, save, show, xlimit):
@@ -832,7 +522,7 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape, images):
     'shape' == '2D_TLS' : Data format is changed to that the first dimension is time, the second is the leg and the last is the signals (i.e. time-steps x 2 x 5). Only valid if data for the non-affected side is used.
     'shape' == '2D_TSL' : Data format is changed to that the first dimension is time, the second is the signals and the last is the leg (i.e. time-steps x 5 x 2). Only valid if data for the non-affected side is used.
     'shape' == 'IMG_STACK' : Data format in which all transformed images are stacked along the last axis, resulting in width x height x singals * number of images
-    'shape' == 'IMG_ARR': Data format in which all transformed images are arranged in TODO
+    'shape' == None : Data is already in the desired format, no modification is necessary.
 
     Parameters:
     data_dict : dictionary
@@ -846,10 +536,10 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape, images):
 
     shape : string
         Specifies the purpose of the output shape.
-        Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D, '2D_TLS' & '2D_TSL' used for comparison in 2DCNN)
+        Possible values are ('1D' - used for 1DCNN, MLP, LSTM, '2D_TS1' - used for 2DCNN, '2D_T1S' - experimental use only, '2D_SST' - used for Alharthi 2D, '2D_TLS' & '2D_TSL' used for comparison in 2DCNN, 'IMG_STACK' used for Image Transformations (Hatami))
     
     images : list
-        Specifies the list of images to use in case of shape being equal to 'IMG_STACK' or 'IMG_ARR'.
+        Specifies the list of images to use in case of shape being equal to 'IMG_STACK'.
 
     ----------
     Returns:
@@ -858,23 +548,26 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape, images):
 
     ----------
     Raises:
-    ValueError : If shape is not one of '1D', '2D_TS1', '2D_T1S' or '2D_SST'.
+    ValueError : If shape is not one of '1D', '2D_TS1', '2D_T1S' or '2D_SST' or None
     ValueError : If shape is '2D_SST', '2D_TLS' or '2D_TSL' and useNonAffected is False (can not arrange the channels in 2 dimensions in such a case).
-    Value Error : If shape is 'IMG_STACK' or 'IMG_ARR' and 'images' is None or empty.
-    ValueError : If shape is 'IMG_STACK' or 'IMG_ARR' and one of the images in not available in the dataset.
+    Value Error : If shape is 'IMG_STACK' and 'images' is None or empty.
+    ValueError : If shape is 'IMG_STACK' and one of the images in not available in the dataset.
     """
-
-    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST", "2D_TLS", "2D_TSL", "IMG_STACK", "IMG_ARR"]:
-        raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S', '2D_SST' '2D_TLS' or '2DTSL'.".format(shape))
 
     val_suffix = ""
     if val_set:
         val_suffix = "_val"
 
+    if shape is None:
+        return data_dict["affected"+val_suffix]
+    
+    if shape not in ["1D", "2D_TS1", "2D_T1S", "2D_SST", "2D_TLS", "2D_TSL", "IMG_STACK"]:
+        raise ValueError("Shape '{}' is not a valid format, please select one of '1D', '2D_TS1', '2D_T1S', '2D_SST' '2D_TLS', '2DTSL' or 'IMG_STACK'.".format(shape))
+
     # Image data
-    if shape in ["IMG_STACK", "IMG_ARR"]:
+    if shape == "IMG_STACK":
         if not isinstance(images, list) or len(images) < 1:
-            raise ValueError("For using the image format (starting with IMG), a list of valid images to be used needs to be specified.")
+            raise ValueError("For using the image format (IMG_STACK), a list of valid images to be used needs to be specified.")
 
         first_image = True
         for image in images:

@@ -91,9 +91,9 @@ def create_config():
     """Creates the configuration file with the settings for the MLP."""
 
     config = {
-        "layers": 1,
-        "neurons0": 90,
-        "neurons1": 50,
+        "layers": 2,
+        "neurons0": 50,
+        "neurons1": 80,
         "neurons2": 50,
         "batch_normalization": False,
         "dropout": None,
@@ -101,13 +101,13 @@ def create_config():
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.001,
-        "beta_1": 0.9,
-        "beta_2": 0.999,
+        "learning_rate": 0.0018516894394818243, #0.001
+        "beta_1": 0.934566655519663, #0.9
+        "beta_2": 0.7533619902033079, #0.999
         "epsilon": 1e-07,
         "amsgrad": False,
-        "batch_size": 32,
-        "epochs": 100
+        "batch_size": 92,
+        "epochs": 220
     }
 
     return config
@@ -202,6 +202,7 @@ if __name__ == "__main__":
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
+    #scaler = GRFScaler(scalertype="standard")
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
 
     validate_MLP(train, sweep=True, class_dict=fetcher.get_class_dict())
