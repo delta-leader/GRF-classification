@@ -224,22 +224,22 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            img = config.images[0]
-            count = len(config.images)
-            if config.sweep:
-                conv_args = {
-                    "images": config.images,
-                    
-                }
-                imgFilter = None
-                if config.filter is not None:
-                    imgFilter = ImageFilter(config.filter, config.filter_size)
-                new_train = converter.convert(img_train, conversions=get_conv_images(config.images), conv_args=conv_args, imgFilter=imgFilter)
-                new_train["label"] = img_train["label"]
-                if "label_val" in img_train.keys():
-                    new_train["label_val"] = img_train["label_val"]
-            else:
-                new_train = img_train
+            #img = config.images[0]
+            #count = len(config.images)
+            #if config.sweep:
+            #    conv_args = {
+            #        "images": config.images,
+            #        
+            #    }
+            #    imgFilter = None
+            #    if config.filter is not None:
+            #        imgFilter = ImageFilter(config.filter, config.filter_size)
+            #    new_train = converter.convert(img_train, conversions=get_conv_images(config.images), conv_args=conv_args, imgFilter=imgFilter)
+            #    new_train["label"] = img_train["label"]
+            #    if "label_val" in img_train.keys():
+            #        new_train["label_val"] = img_train["label_val"]
+            #else:
+            new_train = img_train
 
             model = create_IMG(input_shape=(new_train["affected"][img].shape[1], new_train["affected"][img].shape[2], new_train["affected"][img].shape[3]*count*2), config=config)
             tester.perform_sweep(model, config, new_train, shape="IMG_STACK", images=config.images, useNonAffected=True)
