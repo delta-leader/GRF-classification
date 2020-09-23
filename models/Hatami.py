@@ -123,7 +123,8 @@ def create_config():
         "amsgrad": False,
         "batch_size": 32,
         "epochs": 100,
-        "gpu": True
+        "gpu": True,
+        "sweep": False
     }
 
     return config
@@ -222,13 +223,13 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            if conv_args["sweep"]:
+            if config.sweep:
                 conv_args = {
                     "images": config.images,
                     
                 }
-                img = conv_args["images"][0]
-                count = len(conv_args["images"])
+                img = config.images[0]
+                count = len(config.images)
                 imgFilter = None
                 if config.filter is not None:
                     imgFilter = ImageFilter(config.filter, config.filter_size)
@@ -372,4 +373,4 @@ if __name__ == "__main__":
         "delay": 4,
         "metric": "euclidean"
     }
-    validate_IMG(train, conv_args=conv_args, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_IMG(train, conv_args=conv_args, class_dict=fetcher.get_class_dict(), sweep=True)
