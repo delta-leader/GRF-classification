@@ -183,9 +183,6 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
         Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
 
-    if not sweep and conv_args["sweep"]:
-        raise ValueError("Incoherent configuration, sweep-mode is not specified but set in the conversion-arguments.")
-
     images = list(train["affected"].keys())
     count = len(images)
     img = images[0]

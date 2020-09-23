@@ -165,8 +165,8 @@ def validate_Inception(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN)
     
     else:
-        #filepath = "./output/FCN"
-        filepath = "models/output/MLP/WandB/Inception"
+        filepath = "./output/FCN"
+        #filepath = "models/output/MLP/WandB/Inception"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -295,8 +295,8 @@ def extract_features(data, useXception=False, pooling="max"):
 
 
 if __name__ == "__main__":
-    #filepath = "../.."
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../.."
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     }
     converter = GRFImageConverter()
     #if this is used with sweep, tensorflow will use the CPU
-    converter.enableGpu()
+    #converter.enableGpu()
     imgFilter = None
     if conv_args["filter"] is not None:
         imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
@@ -340,4 +340,4 @@ if __name__ == "__main__":
         "label_val": train["label_val"]
     }
     
-    validate_Inception(data, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_Inception(data, class_dict=fetcher.get_class_dict(), sweep=True)
