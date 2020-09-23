@@ -124,7 +124,8 @@ def create_config():
         "batch_size": 32,
         "epochs": 100,
         "gpu": True,
-        "sweep": False
+        "sweep": False,
+        "images" : ["gadf"]
     }
 
     return config
@@ -238,7 +239,7 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
                 if "label_val" in img_train.keys():
                     new_train["label_val"] = img_train["label_val"]
             else:
-                new_train = img_train 
+                new_train = img_train
 
             model = create_IMG(input_shape=(new_train["affected"][img].shape[1], new_train["affected"][img].shape[2], new_train["affected"][img].shape[3]*count*2), config=config)
             tester.perform_sweep(model, config, new_train, shape="IMG_STACK", images=config.images, useNonAffected=True)
