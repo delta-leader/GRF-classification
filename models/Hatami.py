@@ -223,13 +223,13 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
+            img = config.images[0]
+            count = len(config.images)
             if config.sweep:
                 conv_args = {
                     "images": config.images,
                     
                 }
-                img = config.images[0]
-                count = len(config.images)
                 imgFilter = None
                 if config.filter is not None:
                     imgFilter = ImageFilter(config.filter, config.filter_size)
