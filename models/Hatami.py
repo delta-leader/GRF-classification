@@ -123,9 +123,6 @@ def create_config():
         "amsgrad": False,
         "batch_size": 32,
         "epochs": 100,
-        "gpu": True,
-        "sweep": False,
-        "images" : ["gadf"]
     }
 
     return config
@@ -164,7 +161,7 @@ def create_IMG(input_shape, config):
     return model
 
 
-def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
+def validate_IMG(train, test=None, class_dict=None, sweep=False):
     """Trains and tests the network as defined in 
     "Classification of Time-Series Images Using Deep Convolutional Neural Networks" (Hatami et al., 2017).
     Two modes are available:
@@ -174,9 +171,6 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
     Parameters:
     train : dict
         Containing the GRF-data for training and validation.
-
-    conv_args : dict
-        Containing the parameters used for the image conversions.
     
     test : dict, default=None
         Containing the GRF-data for the test-set.
@@ -187,35 +181,14 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
     sweep : bool, default=False
         If true performs a hyperparameter sweep using W&B according to the specified sweep-configuration (using only the validation-set)
         Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
-
-    ----------
-    Raises:
-    ValueError : if sweep is False and the conversion-argument sweep is set to True. This configuration is invalid.
     """
 
     if not sweep and conv_args["sweep"]:
         raise ValueError("Incoherent configuration, sweep-mode is not specified but set in the conversion-arguments.")
 
-    converter = GRFImageConverter()
-    if conv_args["gpu"]:
-        converter.enableGpu()
-
-    img_train = train
-    img_test = test
-    if not conv_args["sweep"]:
-        imgFilter=None
-        if conv_args["filter"] is not None:
-            imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
-        img_train = converter.convert(img_train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
-        img_train["label"] = train["label"]
-        if "label_val" in train.keys():
-            img_train["label_val"] = train["label_val"]
-        if img_test is not None:
-            img_test = converter.convert(img_test, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args, imgFilter=imgFilter)
-            img_test["label"] = test["label"]
-
-    img = conv_args["images"][0]
-    count = len(conv_args["images"])
+    images = list(train["affected"].keys())
+    count = len(images)
+    img = images[0]
       
     if sweep:
         sweep_config = create_sweep_config()
@@ -224,24 +197,7 @@ def validate_IMG(train, conv_args, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            #img = config.images[0]
-            #count = len(config.images)
-            #if config.sweep:
-            #    conv_args = {
-            #        "images": config.images,
-            #        
-            #    }
-            #    imgFilter = None
-            #    if config.filter is not None:
-            #        imgFilter = ImageFilter(config.filter, config.filter_size)
-            #    new_train = converter.convert(img_train, conversions=get_conv_images(config.images), conv_args=conv_args, imgFilter=imgFilter)
-            #    new_train["label"] = img_train["label"]
-            #    if "label_val" in img_train.keys():
-            #        new_train["label_val"] = img_train["label_val"]
-            #else:
-            new_train = img_train
-
-            model = create_IMG(input_shape=(new_train["affected"][img].shape[1], new_train["affected"][img].shape[2], new_train["affected"][img].shape[3]*count*2), config=config)
+            model = create_IMG(input_shape=(train["affected"][img].shape[1], new_train["affected"][img].shape[2], new_train["affected"][img].shape[3]*count*2), config=config)
             tester.perform_sweep(model, config, new_train, shape="IMG_STACK", images=config.images, useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
@@ -365,15 +321,23 @@ if __name__ == "__main__":
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
     
     conv_args = {
-        "sweep": False,
-        "gpu": True,
         "images": ["gadf"],
         "filter": None,
-        "filter_size": 7,
+        "filter_size": (7,7),
         "num_bins": 20,
         "range": (-1, 1),
         "dims": 3,
         "delay": 4,
         "metric": "euclidean"
     }
-    validate_IMG(train, conv_args=conv_args, class_dict=fetcher.get_class_dict(), sweep=True)
+    converter = GRFImageConverter()
+    converter.enableGpu()
+    imgFilter = None
+    if conv_args["filter"] is not None:
+        imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
+    img_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
+    img_train["label"] = train["label"]
+    if "label_val" in train.keys():
+        img_train["label_val"] = train["label_val"]
+
+    validate_IMG(img_train, class_dict=fetcher.get_class_dict(), sweep=True)
