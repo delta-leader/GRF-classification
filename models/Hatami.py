@@ -198,7 +198,7 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
             config = wandb_init(create_config())
             resetRand()
             model = create_IMG(input_shape=(train["affected"][img].shape[1], train["affected"][img].shape[2], train["affected"][img].shape[3]*count*2), config=config)
-            tester.perform_sweep(model, config, train, shape="IMG_STACK", images=config.images, useNonAffected=True)
+            tester.perform_sweep(model, config, train, shape="IMG_STACK", images=images, useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
         wandb.agent(sweep_id, function=trainNN)
@@ -212,7 +212,7 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
         resetRand()
         model = create_IMG(input_shape=(train["affected"][img].shape[1], train["affected"][img].shape[2], train["affected"][img].shape[3]*count*2), config=config)
         tester.save_model_plot(model, "IMG_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=train, images=conv_args["images"], config=config, test=test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, images=images, config=config, test=test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 
