@@ -131,13 +131,13 @@ def create_config():
 
     config = {
         "layers": 1,
-        "filters0": 35,
+        "filters0": 175,
         "filters1": 32,
         "filters2": 32,
-        "kernel0": 11,
+        "kernel0": 5,
         "kernel1": 5,
         "kernel2": 3,
-        "stride0": 1,
+        "stride0": 5,
         "stride1": 1,
         "stride2": 1,
         "dilation0": 1,
@@ -145,12 +145,12 @@ def create_config():
         "dilation2": 1,
         "batch_normalization": False,
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 4,
         "pool_stride": None,
-        "neurons": 100,
-        "dropout_cnn": 0.35169657760885964,
-        "dropout_mlp": 0.20119301210043888,
-        "separable": True,
+        "neurons": 185,
+        "dropout_cnn": 0.38775318271939535,
+        "dropout_mlp": 0.31552753454565335,
+        "separable": False,
         "skipConnections": True,
         "padding": "same",
         "activation": "relu",
@@ -267,8 +267,8 @@ def validate_1DCNN(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN, count=1000)
     
     else:
-        #filepath = "./output/1DCNN"
-        filepath = "models/output/MLP/WandB/CNN"
+        filepath = "./output/1DCNN"
+        #filepath = "models/output/MLP/WandB/CNN"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -287,8 +287,9 @@ if __name__ == "__main__":
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
+    #scaler = GRFScaler(scalertype="standard")
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
 
-    validate_1DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_1DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
 
    
