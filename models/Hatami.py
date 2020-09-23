@@ -197,8 +197,8 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            model = create_IMG(input_shape=(train["affected"][img].shape[1], new_train["affected"][img].shape[2], new_train["affected"][img].shape[3]*count*2), config=config)
-            tester.perform_sweep(model, config, new_train, shape="IMG_STACK", images=config.images, useNonAffected=True)
+            model = create_IMG(input_shape=(train["affected"][img].shape[1], train["affected"][img].shape[2], train["affected"][img].shape[3]*count*2), config=config)
+            tester.perform_sweep(model, config, train, shape="IMG_STACK", images=config.images, useNonAffected=True)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
         wandb.agent(sweep_id, function=trainNN)
@@ -210,9 +210,9 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
         resetRand()
-        model = create_IMG(input_shape=(img_train["affected"][img].shape[1], img_train["affected"][img].shape[2], img_train["affected"][img].shape[3]*count*2), config=config)
+        model = create_IMG(input_shape=(train["affected"][img].shape[1], train["affected"][img].shape[2], train["affected"][img].shape[3]*count*2), config=config)
         tester.save_model_plot(model, "IMG_model.png")
-        acc, _, val_acc, _ = tester.test_model(model, train=img_train, images=conv_args["images"], config=config, test=img_test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
+        acc, _, val_acc, _ = tester.test_model(model, train=train, images=conv_args["images"], config=config, test=test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
 
 
