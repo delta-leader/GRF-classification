@@ -130,28 +130,28 @@ def create_config():
     """Creates the configuration file with the settings for the 1DCNN."""
 
     config = {
-        "layers": 1,
-        "filters0": 175,
-        "filters1": 32,
+        "layers": 2,
+        "filters0": 131,
+        "filters1": 31,
         "filters2": 32,
-        "kernel0": 5,
-        "kernel1": 5,
+        "kernel0": 18,
+        "kernel1": 6,
         "kernel2": 3,
-        "stride0": 5,
+        "stride0": 1,
         "stride1": 1,
         "stride2": 1,
-        "dilation0": 1,
-        "dilation1": 1,
+        "dilation0": 12,
+        "dilation1": 14,
         "dilation2": 1,
         "batch_normalization": False,
         "pool_type": "max",
-        "pool_size": 4,
+        "pool_size": 3,
         "pool_stride": None,
-        "neurons": 185,
-        "dropout_cnn": 0.38775318271939535,
-        "dropout_mlp": 0.31552753454565335,
+        "neurons": 46,
+        "dropout_cnn": 0.14204535896572307,
+        "dropout_mlp": 0.43700599895787645,
         "separable": False,
-        "skipConnections": True,
+        "skipConnections": False,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
@@ -288,9 +288,9 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False)
-    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
-    #train = set_valSet(train, val, parse=None)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=False, val_setp=0, include_info=True)
+    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
+    train = set_valSet(train, val, parse="SESSION_ID")
     
     validate_1DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
 
