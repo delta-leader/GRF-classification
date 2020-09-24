@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 1D-Kernels - TLS",
+        "name": "2DCNN Sweep 1D-Kernels - TSL",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -74,11 +74,11 @@ def create_sweep_config():
             #    "min": 2,
             #    "max": 10
             #},
-            #"kernel1_1": {
-            #    "distribution": "int_uniform",
-            #    "min": 1,
-            #    "max": 5
-            #},
+            "kernel1_1": {
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
             "pool_type": {
                 "distribution": "categorical",
                 "values": ["max", "avg", None]
@@ -88,11 +88,11 @@ def create_sweep_config():
                 "min": 2,
                 "max": 5
             },
-            #"pool_size1":{
-            #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 3
-            #},
+            "pool_size1":{
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 2
+            },
             #"stride0_0":{
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -157,7 +157,7 @@ def create_config():
     """Creates the configuration file with the settings for the 2DCNN."""
 
     config = {
-        "input_shape": "SST",
+        "input_shape": "TSL",
         "layers": 2,
         "filters0": 32,
         "filters1": 32,
