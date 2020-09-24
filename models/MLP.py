@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "MLP Sweep 1Layer - Hyperparameters",
+        "name": "MLP Sweep 1Layer - Resampling",
         "method": "bayes",
         "description": "Find the optimal hyperparameters for 1Layer",
         "metric": {
@@ -33,54 +33,54 @@ def create_sweep_config():
             #"layers": {
             #    "values": [1, 2]
             #},
-            #"neurons0": {
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 300
-            #},
+            "neurons0": {
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 300
+            },
             #"neurons2": {
             #    "distribution": "int_uniform",
             #    "min": 20,
             #    "max": 300
             #},
-            #"batch_normalization": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"dropout": {
-            #    "distribution": "uniform",
-            #    "min": 0.1,
-            #    "max": 0.5
-            #}
-            "learning_rate":{
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.01
-            },
-            "beta_1":{
-                "distribution": "uniform",
-                "min": 0.5,
-                "max": 0.99
-            },
-            "beta_2":{
-                "distribution": "uniform",
-                "min": 0.6,
-                "max": 0.999
-            },
-            "amsgrad":{
+            "batch_normalization": {
                 "distribution": "categorical",
                 "values": [True, False]
             },
-            "epochs":{
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 300
-            },
-            "batch_size":{
-                "distribution": "int_uniform",
-                "min": 8,
-                "max": 512
-            },
+            "dropout": {
+                "distribution": "uniform",
+                "min": 0.1,
+                "max": 0.5
+            }
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 300
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
+            #},
         }
     }
 
@@ -203,10 +203,10 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0, include_info=True)
-    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True)
-    train = set_valSet(train, val, parse="SESSION_ID")
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=10, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
+    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True)
+    #train = set_valSet(train, val, parse="SESSION_ID")
 
-    validate_MLP(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_MLP(train, sweep=True, class_dict=fetcher.get_class_dict())
 
    
