@@ -90,24 +90,24 @@ def create_sweep_config():
 def create_config():
     """Creates the configuration file with the settings for the MLP."""
 
-    config = {
-        "layers": 1,
-        "neurons0": 253,
+        config = {
+        "layers": 2,
+        "neurons0": 50,
         "neurons1": 80,
         "neurons2": 50,
-        "batch_normalization": True,
-        "dropout": 0.24681225107340823,
+        "batch_normalization": False,
+        "dropout": None,
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.001
-        "beta_1": 0.9
-        "beta_2": 0.999
+        "learning_rate": 0.0018516894394818243, #0.001
+        "beta_1": 0.934566655519663, #0.9
+        "beta_2": 0.7533619902033079, #0.999
         "epsilon": 1e-07,
         "amsgrad": False,
-        "batch_size": 32,
-        "epochs": 100
+        "batch_size": 92,
+        "epochs": 293
     }
 
     return config
