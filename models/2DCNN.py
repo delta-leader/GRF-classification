@@ -31,39 +31,39 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            #"filters0": {
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 250
-            #},
-            #"filters1": {
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 250
-            #},
-            #"batch_normalization": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"skipConnections": {
-            #    "distribution": "categorical",
-            #    "values": [True, False]
-            #},
-            #"dropout_cnn": {
-            #    "distribution": "uniform",
-            #    "min": 0.0,
-            #    "max": 0.5
-            #},
-            #"dropout_mlp": {
-            #    "distribution": "uniform",
-            #    "min": 0.0,
-            #    "max": 0.5
-            #},
-            #"kernel0_0": {
-            #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 30
-            #},
+            "filters0": {
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
+            },
+            "filters1": {
+                "distribution": "int_uniform",
+                "min": 20,
+                "max": 250
+            },
+            "batch_normalization": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "skipConnections": {
+                "distribution": "categorical",
+                "values": [True, False]
+            },
+            "dropout_cnn": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "kernel0_0": {
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 30
+            },
             #"kernel0_1": {
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -74,25 +74,25 @@ def create_sweep_config():
             #    "min": 2,
             #    "max": 10
             #},
-            #"kernel1_1": {
-            #    "distribution": "int_uniform",
-            #    "min": 1,
-            #    "max": 5
-            #},
-            #"pool_type": {
-            #    "distribution": "categorical",
-            #    "values": ["max", "avg", None]
-            #},
-            #"pool_size0":{
-            #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 5
-            #},
-            #"pool_size1":{
-            #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 3
-            #},
+            "kernel1_1": {
+                "distribution": "int_uniform",
+                "min": 1,
+                "max": 5
+            },
+            "pool_type": {
+                "distribution": "categorical",
+                "values": ["max", "avg", None]
+            },
+            "pool_size0":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 5
+            },
+            "pool_size1":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 3
+            },
             #"stride0_0":{
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -113,40 +113,40 @@ def create_sweep_config():
             #    "min": 1,
             #    "max": 5
             #},
-            #"neurons":{
-            #    "distribution": "int_uniform",
-            #    "min": 20,
-            #    "max": 200
-            #},
-            "learning_rate":{
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.01
-            },
-            "beta_1":{
-                "distribution": "uniform",
-                "min": 0.5,
-                "max": 0.99
-            },
-            "beta_2":{
-                "distribution": "uniform",
-                "min": 0.6,
-                "max": 0.999
-            },
-            "amsgrad":{
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "epochs":{
+            "neurons":{
                 "distribution": "int_uniform",
                 "min": 20,
                 "max": 200
             },
-            "batch_size":{
-                "distribution": "int_uniform",
-                "min": 8,
-                "max": 512
-            },
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            #"batch_size":{
+            #   "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
+            #},
         }
     }
 
@@ -159,27 +159,27 @@ def create_config():
     config = {
         "input_shape": "TS1",
         "layers": 2,
-        "filters0": 92,
-        "filters1": 134,
+        "filters0": 32,
+        "filters1": 32,
         "filters2": 32,
-        "kernel0_0": 14,
-        "kernel0_1": 5,
-        "kernel1_0": 3,
-        "kernel1_1": 3,
-        "kernel2_0": 3,
-        "kernel2_1": 3,
+        "kernel0_0": 1,
+        "kernel0_1": 1,
+        "kernel1_0": 1,
+        "kernel1_1": 1,
+        "kernel2_0": 1,
+        "kernel2_1": 1,
         "stride0_0": 1,
         "stride0_1": 1,
         "stride1_0": 1,
         "stride1_1": 1,
-        "dilation0_0": 18,
+        "dilation0_0": 1,
         "dilation0_1": 1,
-        "dilation1_0": 9,
-        "dilation1_1": 2,
+        "dilation1_0": 1,
+        "dilation1_1": 1,
         "batch_normalization": False,
         "pool_type": "max",
         "pool_size0": 2,
-        "pool_size1": 3,
+        "pool_size1": 2,
         "pool_stride": None,
         "neurons": 154,
         "dropout_cnn": 0.300265463619231,

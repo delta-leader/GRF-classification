@@ -90,7 +90,7 @@ def create_sweep_config():
 def create_config():
     """Creates the configuration file with the settings for the MLP."""
 
-        config = {
+    config = {
         "layers": 2,
         "neurons0": 50,
         "neurons1": 80,
