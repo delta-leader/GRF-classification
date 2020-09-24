@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 2Layer(dilated) - Hyperparameter",
+        "name": "2DCNN Sweep 1D-Kernels - T1S",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -36,11 +36,11 @@ def create_sweep_config():
                 "min": 20,
                 "max": 250
             },
-            "filters1": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 250
-            },
+            #"filters1": {
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 250
+            #},
             "batch_normalization": {
                 "distribution": "categorical",
                 "values": [True, False]
@@ -74,11 +74,11 @@ def create_sweep_config():
             #    "min": 2,
             #    "max": 10
             #},
-            "kernel1_1": {
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
+            #"kernel1_1": {
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
             "pool_type": {
                 "distribution": "categorical",
                 "values": ["max", "avg", None]
@@ -88,11 +88,11 @@ def create_sweep_config():
                 "min": 2,
                 "max": 5
             },
-            "pool_size1":{
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 3
-            },
+            #"pool_size1":{
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 3
+            #},
             #"stride0_0":{
             #    "distribution": "int_uniform",
             #    "min": 1,
@@ -157,8 +157,8 @@ def create_config():
     """Creates the configuration file with the settings for the 2DCNN."""
 
     config = {
-        "input_shape": "TS1",
-        "layers": 2,
+        "input_shape": "T1S,
+        "layers": 1,
         "filters0": 32,
         "filters1": 32,
         "filters2": 32,
@@ -179,7 +179,7 @@ def create_config():
         "batch_normalization": False,
         "pool_type": "max",
         "pool_size0": 2,
-        "pool_size1": 2,
+        "pool_size1": 1,
         "pool_stride": None,
         "neurons": 154,
         "dropout_cnn": 0.300265463619231,
