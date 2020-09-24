@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "2DCNN Sweep 1D-Kernels - SST",
+        "name": "2DCNN Sweep 1D-Kernels - TLS",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -62,7 +62,7 @@ def create_sweep_config():
             "kernel0_0": {
                 "distribution": "int_uniform",
                 "min": 2,
-                "max": 5
+                "max": 20
             },
             #"kernel0_1": {
             #    "distribution": "int_uniform",
@@ -79,15 +79,15 @@ def create_sweep_config():
             #    "min": 1,
             #    "max": 5
             #},
-            #"pool_type": {
-            #    "distribution": "categorical",
-            #    "values": ["max", "avg", None]
-            #},
-            #"pool_size0":{
-            #    "distribution": "int_uniform",
-            #    "min": 2,
-            #    "max": 5
-            #},
+            "pool_type": {
+                "distribution": "categorical",
+                "values": ["max", "avg", None]
+            },
+            "pool_size0":{
+                "distribution": "int_uniform",
+                "min": 2,
+                "max": 5
+            },
             #"pool_size1":{
             #    "distribution": "int_uniform",
             #    "min": 2,
