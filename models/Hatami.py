@@ -116,13 +116,13 @@ def create_config():
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.001,
-        "beta_1": 0.9,
-        "beta_2": 0.999,
+        "learning_rate": 0.0027959337020068468, #0.001,
+        "beta_1": 0.5764969012599528, # 0.9,
+        "beta_2": 0.7811264725530012, #0.999,
         "epsilon": 1e-08,
-        "amsgrad": False,
-        "batch_size": 32,
-        "epochs": 100,
+        "amsgrad": True,
+        "batch_size": 34,
+        "epochs": 112,
     }
 
     return config
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
-    
+
     conv_args = {
         "images": ["gadf"],
         "filter": None,
