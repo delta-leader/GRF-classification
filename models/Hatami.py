@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "IMG Sweep - Hyperparameters",
+        "name": "IMG Sweep",
         "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -31,65 +31,65 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            #"filters0": {
-            #    "distribution": "int_uniform",
-            #    "min": 16,
-            #    "max": 64
-            #},
-            #"filters1": {
-            #    "distribution": "int_uniform",
-            #    "min": 16,
-            #    "max": 64
-            #},
-            #"kernel0": {
-            #    "distribution": "int_uniform",
-            #    "min": 3,
-            #    "max": 10
-            #},
-            #"kernel1": {
-            #    "distribution": "int_uniform",
-            #    "min": 3,
-            #    "max": 10
-            #},
-            #"dropout_cnn": {
-            #    "distribution": "uniform",
-            #    "min": 0.1,
-            #    "max": 0.5
-            #},
-            #"dropout_mlp": {
-            #    "distribution": "uniform",
-            #    "min": 0.3,
-            #    "max": 0.6
-            #},
-            "learning_rate":{
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.01
-            },
-            "beta_1":{
-                "distribution": "uniform",
-                "min": 0.5,
-                "max": 0.99
-            },
-            "beta_2":{
-                "distribution": "uniform",
-                "min": 0.6,
-                "max": 0.999
-            },
-            "amsgrad":{
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "epochs":{
+            "filters0": {
                 "distribution": "int_uniform",
-                "min": 20,
-                "max": 200
+                "min": 16,
+                "max": 64
             },
-            "batch_size":{
+            "filters1": {
                 "distribution": "int_uniform",
-                "min": 8,
-                "max": 512
+                "min": 16,
+                "max": 64
             },
+            "kernel0": {
+                "distribution": "int_uniform",
+                "min": 3,
+                "max": 10
+            },
+            "kernel1": {
+                "distribution": "int_uniform",
+                "min": 3,
+                "max": 10
+            },
+            "dropout_cnn": {
+                "distribution": "uniform",
+                "min": 0.1,
+                "max": 0.5
+            },
+            "dropout_mlp": {
+                "distribution": "uniform",
+                "min": 0.3,
+                "max": 0.6
+            },
+            #"learning_rate":{
+            #    "distribution": "uniform",
+            #    "min": 0.0001,
+            #    "max": 0.01
+            #},
+            #"beta_1":{
+            #    "distribution": "uniform",
+            #    "min": 0.5,
+            #    "max": 0.99
+            #},
+            #"beta_2":{
+            #    "distribution": "uniform",
+            #    "min": 0.6,
+            #    "max": 0.999
+            #},
+            #"amsgrad":{
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"epochs":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            #"batch_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 8,
+            #    "max": 512
+            #},
         }
     }
 
@@ -116,13 +116,13 @@ def create_config():
         "final_activation": "softmax",
         "regularizer": None,
         "optimizer": "adam",
-        "learning_rate": 0.0027959337020068468, #0.001,
-        "beta_1": 0.5764969012599528, # 0.9,
-        "beta_2": 0.7811264725530012, #0.999,
+        "learning_rate": 0.001,
+        "beta_1": 0.9,
+        "beta_2": 0.999,
         "epsilon": 1e-08,
         "amsgrad": True,
-        "batch_size": 34,
-        "epochs": 112,
+        "batch_size": 32,
+        "epochs": 100,
     }
 
     return config
@@ -161,7 +161,7 @@ def create_IMG(input_shape, config):
     return model
 
 
-def validate_IMG(train, test=None, class_dict=None, sweep=False):
+def validate_IMG(train, images, test=None, class_dict=None, sweep=False):
     """Trains and tests the network as defined in 
     "Classification of Time-Series Images Using Deep Convolutional Neural Networks" (Hatami et al., 2017).
     Two modes are available:
@@ -171,6 +171,9 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
     Parameters:
     train : dict
         Containing the GRF-data for training and validation.
+
+    images : list
+        The images to consider for training and testing
     
     test : dict, default=None
         Containing the GRF-data for the test-set.
@@ -183,7 +186,6 @@ def validate_IMG(train, test=None, class_dict=None, sweep=False):
         Otherwise a local training and evalution run is performed, providing the results for both validation- and test-set.
     """
 
-    images = list(train["affected"].keys())
     count = len(images)
     img = images[0]
       
@@ -338,4 +340,4 @@ if __name__ == "__main__":
     if "label_val" in train.keys():
         img_train["label_val"] = train["label_val"]
 
-    validate_IMG(img_train, class_dict=fetcher.get_class_dict(), sweep=False)
+    validate_IMG(img_train, images=conv_args["images"] class_dict=fetcher.get_class_dict(), sweep=True)
