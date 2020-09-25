@@ -28,7 +28,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "Inception Sweep",
+        "name": "Inception Sweep 2",
         "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -120,7 +120,7 @@ def create_Inception(input_shape, config):
 
     # add layers
     for layer in range(config.layers):
-        model.add(Dense(getattr(config, "neurons{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer))
+        model.add(units=Dense(getattr(config, "neurons{}".format(layer)), activation=config.activation, kernel_regularizer=config.regularizer))
         model.add(BatchNormalization())
         model.add(Dropout(config.dropout))
 
@@ -158,7 +158,9 @@ def validate_Inception(train, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            model = create_Inception(input_shape=(train["affected"].shape[1],), config=config)
+            #model = create_Inception(input_shape=(train["affected"].shape[1],), config=config)
+            input_tensor = Input(shape=(train["affected"].shape[1], train["affected"].shape[1], 1))
+            model = InceptionV3(include_top=True, weights=None, input_tensor=input_tensor, input_shape=None, pooling=None, classes=5)
             tester.perform_sweep(model, config, train, shape=None, useNonAffected=False)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
@@ -246,15 +248,17 @@ def prepare_images(data_dict, norms, images, val_set=False, colormap=mpl.cm.jet,
             new_data = np.concatenate([data_dict["non_affected"+val_suffix][image][:,:,:,i] for i in range(5)], axis=-1)
             data = np.concatenate([data, new_data], axis=-2)
         
-        vmin = norms[image][0]
-        vmax = norms[image][1]
-        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        mapping = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-        data = np.apply_along_axis(lambda x: mapping.to_rgba(x, bytes=True), 0, data)
-        data = np.moveaxis(data, 1, -1)[:,:,:,:3]
+        #vmin = norms[image][0]
+        #vmax = norms[image][1]
+        #norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        #mapping = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+        #data = np.apply_along_axis(lambda x: mapping.to_rgba(x, bytes=True), 0, data)
+        #data = np.moveaxis(data, 1, -1)[:,:,:,:3]
+        data = np.expand_dims(data, -1)
         img_data.append(data)
         
     data = np.concatenate(img_data, axis=1)
+    print(data.shape)
         
     #print(data.shape)
     #mpl.pyplot.imshow(data[0])
@@ -330,8 +334,8 @@ if __name__ == "__main__":
     
     img_train = prepare_images(conv_train, norms=norms, images=conv_args["images"])
     img_val = prepare_images(conv_train, norms=norms, images=conv_args["images"], val_set=True)
-    img_train = extract_features(img_train, useXception=False)
-    img_val = extract_features(img_val, useXception=False)
+    #img_train = extract_features(img_train, useXception=False)
+    #img_val = extract_features(img_val, useXception=False)
 
     data = {
         "affected": img_train,
