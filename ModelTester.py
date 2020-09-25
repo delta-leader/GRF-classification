@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from tensorflow.keras.utils import to_categorical
-from scipy import stats
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 import wandb
@@ -12,6 +11,8 @@ from wandb.keras import WandbCallback
 from tensorflow import random as tfrand
 from numpy.random import seed
 from tensorflow.keras import backend
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 
 def resetRand(seed=1):
@@ -98,6 +99,42 @@ class ModelTester(object):
         plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True)
 
 
+    def predict_model(self, filepath, data_dict, val_set=False, boost=False, shape="1D", images=None, useNonAffected=True):
+    
+
+        if not isinstance(data_dict, dict):
+            raise TypeError("Data was not provided as a dictionary.")
+
+        # verify that all necessary datasets are there
+        _check_keys(data_dict, useNonAffected, val_set)
+
+        val_suffix = ""
+        if val_set:
+            val_suffix = "_val"
+
+        data = _extract_data_from_dict(data_dict, val_set=val_set, useNonAffected=useNonAffected, shape=shape, images=images)
+        model = load_model(filepath)
+
+        predictions = model.predict(data)
+        if boost:
+            predicted_labels, labels = _majority_voting(data_dict, predictions, val_set=val_set)          
+        else:
+            predicted_labels = np.argmax(predictions, axis=1)
+            labels = data_dict["label"+val_suffix]
+
+        conf_mat = _create_confusion_matrix(predicted_labels, labels)
+        print("Confusion Matrix (Rows=Prediction, Columns=Real):")
+        reverse_dict = dict((v,k) for k,v in self.class_dict.items())
+        print("Order: {}".format(reverse_dict))
+        print(conf_mat)
+        count = np.sum(conf_mat)
+        correct_count = np.sum(np.diagonal(conf_mat))
+        accuracy = correct_count/count
+        print("Accuracy: {}".format(accuracy))
+        print("Correct predictions: {}".format(correct_count))
+        print("Wrong predictions: {}".format(count-correct_count))
+
+
     def perform_sweep(self, model, config, train, shape="1D", images=None, useNonAffected=True, loss=None, metrics=None):
         """Performs a single sweep across the parameters set defined in the configuration file of W&B
 
@@ -159,7 +196,7 @@ class ModelTester(object):
         model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[WandbCallback(monitor='val_accuracy')])
 
 
-    def test_model(self, model, train, config, shape="1D", images=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, boost=False):
+    def test_model(self, model, train, config, shape="1D", images=None, useNonAffected=True, test=None, loss=None, metrics=None, logfile="log.dat", model_name="Test-Model", plot_name="model.png", create_plot=True, show_plot=False, store_model=None, boost=False):
         #TODO
         """Compiles and fits the model accurding to the specified settings.
         A summary of the model and it's output are saved to the specified logfile.
@@ -222,6 +259,9 @@ class ModelTester(object):
         show_plot : bool, default=False
             If True the plots are immediately displayed on creation (blocking).
 
+        boost : bool, default=False
+            If True, majority voting will be applied to produce a final classification for all trials within the same session.
+
         ----------
         Returns:
 
@@ -230,6 +270,7 @@ class ModelTester(object):
         TypeError : If 'data_dict' or 'test_dict' are no dictionaries.
         ValueError : If one of the necessary keys is not available in one of the dictionaries.
         ValueError : If shape is '2D_SST' and the non-affected data is not used.
+        ValueError : If 'boost' is true and 'info_val' is not in the train-set (or 'info' is not in the test-set).
         """
 
         if not isinstance(train, dict):
@@ -266,73 +307,59 @@ class ModelTester(object):
         sys.stdout = Logger(logfile)
         print(model.summary())
         print("\n\n")
+
+        callbacks = []
+        if store_model is not None:
+            callbacks.append(ModelCheckpoint(filepath=store_model, save_weights_only=False, monitor="val_accuracy", mode="max", save_best_only=True, save_freq="epoch"))
+        print(store_model)
+        print(callbacks)
         # setting shuffle=False would disable shuffling before selecting batches -> yields slightly better results?
-        train_history = model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=[])
-        sys.stdout = terminal
+        train_history = model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=callbacks)
+        
 
         # calculate maximum accuracy
         accuracy = max(train_history.history["accuracy"])
         val_accuracy = max(train_history.history["val_accuracy"])
-        logfile.write("\nMaximum Accuracy for Train-Set: {} after {} epochs.\n".format(accuracy, train_history.history["accuracy"].index(accuracy)))
-        logfile.write("Maximum Accuracy for Validation-Set: {} after {} epochs.\n".format(val_accuracy, train_history.history["val_accuracy"].index(val_accuracy)))
+        print("\nMaximum Accuracy for Train-Set: {} after {} epochs.".format(accuracy, train_history.history["accuracy"].index(accuracy)))
+        print("Maximum Accuracy for Validation-Set: {} after {} epochs.".format(val_accuracy, train_history.history["val_accuracy"].index(val_accuracy)))
 
         # calculate minimum loss
         loss = min(train_history.history["loss"])
         val_loss = min(train_history.history["val_loss"])
-        logfile.write("Minimum Loss for Train-Set: {} after {} epochs.\n".format(loss, train_history.history["loss"].index(loss)))
-        logfile.write("Minimumm Loss for Validation-Set: {} after {} epochs.\n".format(val_loss, train_history.history["val_loss"].index(val_loss)))
+        print("Minimum Loss for Train-Set: {} after {} epochs.".format(loss, train_history.history["loss"].index(loss)))
+        print("Minimumm Loss for Validation-Set: {} after {} epochs.\n".format(val_loss, train_history.history["val_loss"].index(val_loss)))
+        sys.stdout = terminal
+        
+
+        # Confusion Matrix for validation-set
+        predictions = model.predict(val_data, batch_size=config.batch_size)
+        if boost:
+            logfile.write("\nConfusion Matrix for VALIDATION data (with boosting):\n")
+            predicted_labels, labels = _majority_voting(train, predictions, val_set=True)
+        else:
+            predicted_labels = np.argmax(predictions, axis=1)
+            labels = train["label_val"]
+            logfile.write("\nConfusion Matrix for VALIDATION data:\n")      
+
+        _log_confusion_matrix(logfile, _create_confusion_matrix(predicted_labels, labels), self.class_dict)
+        
 
         # Plot accuracy and loss
         if create_plot or show_plot:
             self.__plot(train_history.history, plot_name, create_plot, show_plot, config.epochs)
 
-        # Confusion Matrix for validation-set
-        predicted_labels = np.argmax(model.predict(val_data, batch_size=config.batch_size), axis=1)
-        #TODO
-        if boost:
-            if "info_val" not in train.keys():
-                raise ValueError("Key 'info_val' is not available, boosting can not be used.")
-            logfile.write("\nConfusion Matrix for VALIDATION data (with boosting):\n")
-            info = train["info_val"]
-            sessions = info['SESSION_ID'].unique()
-            predictions = []
-            labels = []
-            for session in sessions:
-                session_indices = np.where(info["SESSION_ID"]==session)[0]
-                session_pred = np.take(predicted_labels, session_indices, axis=0)
-                predictions.append(stats.mode(session_pred)[0][0])
-                session_labels = np.take(train["label_val"], session_indices, axis=0)
-                assert np.all(session_labels == session_labels[0])
-                labels.append(session_labels[0])
-            _log_confusion_matrix(logfile, _create_confusion_matrix(np.array(predictions), np.array(labels)), self.class_dict)
-
-        else:
-            logfile.write("\nConfusion Matrix for VALIDATION data:\n")      
-            _log_confusion_matrix(logfile, _create_confusion_matrix(predicted_labels, train["label_val"]), self.class_dict)
-
         # Confusion Matrix for test-set
         if test is not None:
-            predicted_labels = np.argmax(model.predict(test_data, batch_size=config.batch_size), axis=1)
+            predictions = model.predict(test_data, batch_size=config.batch_size)
             if boost:
-                if "info" not in test.keys():
-                    raise ValueError("Key 'info' is not availablein TEST-data, boosting can not be used.")
                 logfile.write("\nConfusion Matrix for TEST data (with boosting):\n")
-                info = test["info"]
-                sessions = info['SESSION_ID'].unique()
-                predictions = []
-                labels = []
-                for session in sessions:
-                    session_indices = np.where(info["SESSION_ID"]==session)[0]
-                    session_pred = np.take(predicted_labels, session_indices, axis=0)
-                    predictions.append(stats.mode(session_pred)[0][0])
-                    session_labels = np.take(test["label"], session_indices, axis=0)
-                    assert np.all(session_labels == session_labels[0])
-                    labels.append(session_labels[0])
-                _log_confusion_matrix(logfile, _create_confusion_matrix(np.array(predictions), np.array(labels)), self.class_dict)
-            
+                predicted_labels, labels = _majority_voting(test, predictions, val_set=False)
             else:
+                predicted_labels = np.argmax(predictions, axis=1)
+                labels = test["label"]
                 logfile.write("\nConfusion Matrix for TEST data:\n")
-                _log_confusion_matrix(logfile, _create_confusion_matrix(np.argmax(predicted_labels, axis=1), test["label"]), self.class_dict)
+                
+            _log_confusion_matrix(logfile, _create_confusion_matrix(predicted_labels, labels), self.class_dict)
 
         logfile.close()
 
@@ -433,6 +460,11 @@ def _create_confusion_matrix(labels, expected_labels):
 
     expected_labels : ndarray
         Contains the original class labels.
+
+    ----------
+    Returns:
+    conf_mat : nd.array
+        Containing the confusion matrix
 
     ----------
     Raises:
@@ -610,6 +642,71 @@ def _extract_data_from_dict(data_dict, val_set, useNonAffected, shape, images):
         data = np.expand_dims(data, axis=-2)
 
     return data
+
+
+def _majority_voting(data, predictions, val_set=True):
+    """Applies a majority voting process to the data. The predictions for all trials recorded during a single session are aggregated to produce the final classification.
+    Only trials where at least one class has a probability of >0.4 are considered for the voting process.
+    Voting is conducted by taking the mode across all valid trials. If the mode is ambigous (i.e. two or more classes are predicted by the same number of trials),
+    the class with the highest probabilty in total (across all valid trials) is chosen.
+
+    Parameters:
+    info : dict
+        Contains the original data. Must contain either 'info' (if 'val_set' is False) or 'info_val' otherwise.
+
+    predictions : np.array
+        Contains all predictions for the data (i.e. the output of the model).
+
+    val_set : bool, default=True
+        If True, the sessions are aggregated according to the IDs provided in 'info_val'.
+        If False, 'info' is used instead.
+    
+    ----------
+    Returns:
+    voted_predictions : np.array
+        Contains the final classification for each session.
+
+    labels : np.array
+        Contains the corresponding lables from the original data
+
+    ----------
+    Raises:
+    ValueError : If either 'info' or 'info_val' is not present (depending on the value of 'val_set')
+    """
+    
+    val_suffix = ""
+    if val_set:
+        val_suffix = "_val"
+                
+    if "info"+val_suffix not in data.keys():
+        raise ValueError("Key 'info_val' is not available, boosting can not be used.")
+    info = data["info"+val_suffix]
+    sessions = info['SESSION_ID'].unique()
+    voted_predictions = []
+    labels = []
+    for session in sessions:
+        session_indices = np.where(info["SESSION_ID"]==session)[0]
+        session_pred = np.take(predictions, session_indices, axis=0)
+
+        mask = (session_pred > 0.4)
+        mask = np.any(mask, axis=1)
+        predicted_labels = np.argmax(session_pred[mask,:], axis=1)
+        counts = np.bincount(predicted_labels)
+        mode = np.where(counts==np.max(counts))[0]
+        if mode.shape[0] > 1:
+            #print("DRAW")
+            probabilities = np.sum(session_pred[mask], axis=0)
+            voted_predictions.append(np.argmax(probabilities))
+
+        else:
+            voted_predictions.append(mode[0])
+
+        session_labels = np.take(data["label"+val_suffix], session_indices, axis=0)
+        # TESTING only
+        # assert np.all(session_labels == session_labels[0])
+        labels.append(session_labels[0])
+
+    return np.array(voted_predictions), np.array(labels)
 
 
 def _configure_optimizer(config):
