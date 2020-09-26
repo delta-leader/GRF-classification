@@ -685,9 +685,11 @@ def _majority_voting(data, predictions, val_set=True):
     for session in sessions:
         session_indices = np.where(info["SESSION_ID"]==session)[0]
         session_pred = np.take(predictions, session_indices, axis=0)
-
         mask = (session_pred > 0.4)
         mask = np.any(mask, axis=1)
+        if not mask.any():
+            mask = (session_pred > 0.3)
+            mask = np.any(mask, axis=1)
         predicted_labels = np.argmax(session_pred[mask,:], axis=1)
         counts = np.bincount(predicted_labels)
         mode = np.where(counts==np.max(counts))[0]

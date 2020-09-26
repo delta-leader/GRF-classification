@@ -2,7 +2,6 @@ import os.path, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 import tensorflow.keras
 import wandb
-from collections import namedtuple
 
 from DataFetcher import DataFetcher, set_valSet
 from GRFScaler import GRFScaler
@@ -182,8 +181,8 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         wandb.agent(sweep_id, function=trainNN, count=500)
     
     else:
-        filepath = "./output/MLP"
-        #filepath = "models/output/MLP/WandB/Test"
+        #filepath = "./output/MLP"
+        filepath = "models/output/MLP/WandB/Test"
         config = create_config()
         config = namedtuple("Config", config.keys())(*config.values())
         tester = ModelTester(filepath=filepath, class_dict=class_dict)
@@ -192,21 +191,21 @@ def validate_MLP(train, test=None, class_dict=None, sweep=False):
         tester.save_model_plot(model, "MLP_model.png")
         acc, _, val_acc, _ = tester.test_model(model, train=train, config=config, test=test, shape="1D", logfile="MLP_1L_N90.dat", model_name="MLP - 1 Hidden Layer", plot_name="MLP_1L_N90.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
-
+        
 
 
 
 
 if __name__ == "__main__":
-    filepath = "../.."
-    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    #filepath = "../.."
+    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=10, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0.2, include_info=False)
     #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True)
     #train = set_valSet(train, val, parse="SESSION_ID")
 
-    validate_MLP(train, sweep=True, class_dict=fetcher.get_class_dict())
+    validate_MLP(train, sweep=False, class_dict=fetcher.get_class_dict())
 
    

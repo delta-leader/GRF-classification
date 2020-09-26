@@ -4,8 +4,10 @@ from collections import namedtuple
 from DataFetcher import DataFetcher
 from GRFScaler import GRFScaler
 from ModelTester import ModelTester, resetRand
+from GRFImageConverter import GRFImageConverter
 from models.MLP import create_MLP
 from models.FCN import create_FCN
+from models.Hatami import create_IMG
 
 class Classifier(object):
     """Wrapper class for saving model configurations and settings.
@@ -307,10 +309,47 @@ class Classifier(object):
                     "epochs": 100
                 }
             },
+            "IMG-original": {
+                "file": "models/saved_models/IMG-original.h5",
+                "shape": "IMG_STACK",
+                "images": ["gadf"],
+                "non_affected": True,
+                "conv_args": {
+                    "num_bins": 25,
+                    "range": (-1, 1),
+                    "dims": 2,
+                    "delay": 3,
+                    "metric": "euclidean"
+                },
+                "config": {
+                    "layers": 2,
+                    "filters0": 32,
+                    "filters1": 32,
+                    "kernel0": 3,
+                    "kernel1": 3,
+                    "padding": "valid",
+                    "pool_size": 2,
+                    "dropout_cnn": 0.25, 
+                    "neurons": 128,
+                    "dropout_mlp": 0.5,
+                    "activation": "relu",
+                    "final_activation": "softmax",
+                    "regularizer": None,
+                    "optimizer": "adam",
+                    "learning_rate": 0.001,
+                    "beta_1": 0.9,
+                    "beta_2": 0.999,
+                    "epsilon": 1e-08,
+                    "amsgrad": True,
+                    "batch_size": 32,
+                    "epochs": 100,
+                }
+            },
         }
-        self.generic_models = ["MLP", "1DCNN", "FCN"]
+        self.generic_models = ["MLP", "1DCNN", "FCN", "IMG"]
         self.mlps = ["MLP", "MLP1", "MLP2"]
         self.fcns = ["FCN", "FCN-tuned", "FCN-original"]
+        self.images =["IMG-original"]
 
     def train_and_predict(self, model, data, test=None, boosting=False, config=None, shape=None, images=None, useNonAffected=True, deterministic=True, name=None, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
         
@@ -372,6 +411,15 @@ class Classifier(object):
                 raise ValueError("A FCN can only be trained with shape='1D'.")
             if images is not None:
                 raise ValueError("Images have been specified, but the FCN can not be used to classify image-data.")
+        if model in self.images:
+            converter = GRFImageConverter()
+            img_data = converter.convert(data, conversions=["gaf"], conv_args=self.models[model]["conv_args"])
+            for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
+                data[key] = img_data[key]
+            img = images[0]
+            count = len(images)
+            keras_model = create_IMG(input_shape=(data["affected"][img].shape[1], data["affected"][img].shape[2], data["affected"][img].shape[3]*count*2), config=config)
+            
 
         if filepath is None:
             filepath = "models/output/"+name+"/"
@@ -418,16 +466,16 @@ if __name__ == "__main__":
     #filepath = "../.."
     filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
-    scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
+    scaler = GRFScaler(scalertype="MinMax", featureRange=(0,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=True)
     #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True)
     #train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
 
-    #classifier.predict("FCN", train, val_set=True, boosting=False)
-    classifier.train_and_predict("FCN-original", train, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False)
+    #classifier.predict("FCN-original", train, val_set=True, boosting=True)
+    classifier.train_and_predict("IMG-original", train, images=["gasf"], name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     
