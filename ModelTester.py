@@ -311,8 +311,6 @@ class ModelTester(object):
         callbacks = []
         if store_model is not None:
             callbacks.append(ModelCheckpoint(filepath=store_model, save_weights_only=False, monitor="val_accuracy", mode="max", save_best_only=True, save_freq="epoch"))
-        print(store_model)
-        print(callbacks)
         # setting shuffle=False would disable shuffling before selecting batches -> yields slightly better results?
         train_history = model.fit(train_data, to_categorical(train["label"]), validation_data=(val_data, to_categorical(train["label_val"])), batch_size=config.batch_size, epochs=config.epochs, verbose=2, callbacks=callbacks)
         

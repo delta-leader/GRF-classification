@@ -122,7 +122,7 @@ def create_config():
         "epsilon": 1e-08,
         "amsgrad": True,
         "batch_size": 32,
-        "epochs": 100,
+        "epochs": 150,
     }
 
     return config
@@ -213,6 +213,7 @@ def validate_IMG(train, images, test=None, class_dict=None, sweep=False):
         tester.save_model_plot(model, "IMG_model.png")
         acc, _, val_acc, _ = tester.test_model(model, train=train, images=images, config=config, test=test, shape="IMG_STACK", logfile="IMG.dat", model_name="IMG", plot_name="IMG.png")
         print("Accuracy: {}, Val-Accuracy: {}".format(acc, val_acc))
+        return acc, val_acc
 
 
 def get_conv_images(images):
@@ -316,32 +317,57 @@ if __name__ == "__main__":
     filepath = "../.."
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
+    scaler = GRFScaler(scalertype="MinMax", featureRange=(0,1))
+    train0 = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
+    train1 = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
+    conv_args = {
+        "images": ["rcp"],
+        "filter": None,
+        "filter_size": (2,2),
+        "num_bins": 25,
+        "range": (-1, 1),
+        "dims": 2,
+        "delay": 3,
+        "metric": "euclidean"
+    }
+    converter = GRFImageConverter()
+    #if this is used with sweep, tensorflow will use the CPU
+    #converter.enableGpu()
+    imgFilter = ImageFilter("avg", (2,2))
+    gaf = converter.convert(train0, conversions=["gaf"], conv_args=conv_args)
+    mtf = converter.convert(train1, conversions=["mtf"], conv_args=conv_args, imgFilter=imgFilter)
+    rcp = converter.convert(train1, conversions=["rcp"], conv_args=conv_args)
+    rcp = normalize_images(img_train, images=["rcp"], new_range=(0,1))
 
-    for dim, delay in [(2,2),(2,3),(2,4),(2,5),(2,7),(2,8),(2,15),(3,2),(3,3),(3,4),(3,5),(3,7),(3,8),(3,15),(4,2),(4,3),(4,4),(4,5),(4,7),(4,8),(4,15)]:
-        conv_args = {
-            "images": ["rcp"],
-            "filter": None,
-            "filter_size": (7,7),
-            "num_bins": 20,
-            "range": (-1, 1),
-            "dims": dim,
-            "delay": delay,
-            "metric": "euclidean"
-        }
-        converter = GRFImageConverter()
-        #if this is used with sweep, tensorflow will use the CPU
-        #converter.enableGpu()
-        imgFilter = None
-        if conv_args["filter"] is not None:
-            imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
-        img_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args, imgFilter=imgFilter)
-        #img_train = normalize_images(img_train, images=["rcp"])
+    img_train["label"] = train1["label"]
+    img_train["label_val"] = train1["label_val"]
+    img_train["affected"]["gasf"] = gaf["affected"]["gasf"]
+    img_train["affected_val"]["gasf"] = gaf["affected_val"]["gasf"]
+    img_train["non_affected"]["gasf"] = gaf["non_affected"]["gasf"]
+    img_train["non_affected_val"]["gasf"] = gaf["non_affected_val"]["gasf"]
+    img_train["affected"]["gadf"] = gaf["affected"]["gadf"]
+    img_train["affected_val"]["gadf"] = gaf["affected_val"]["gadf"]
+    img_train["non_affected"]["gadf"] = gaf["non_affected"]["gadf"]
+    img_train["non_affected_val"]["gadf"] = gaf["non_affected_val"]["gadf"]
+    img_train["affected"]["mtf"] = mtf["affected"]["mtf"]
+    img_train["affected_val"]["mtf"] = mtf["affected_val"]["mtf"]
+    img_train["non_affected"]["mtf"] = mtf["non_affected"]["mtf"]
+    img_train["non_affected_val"]["mtf"] = mtf["non_affected_val"]["mtf"]
+    img_train["affected"]["rcp"] = rcp["affected"]["rcp"]
+    img_train["affected_val"]["rcp"] = rcp["affected_val"]["rcp"]
+    img_train["non_affected"]["rcp"] = rcp["non_affected"]["rcp"]
+    img_train["non_affected_val"]["rcp"] = rcp["non_affected_val"]["rcp"]
 
-
-        img_train["label"] = train["label"]
-        if "label_val" in train.keys():
-            img_train["label_val"] = train["label_val"]
-
-        #validate_IMG(img_train, images=conv_args["images"], class_dict=fetcher.get_class_dict(), sweep=False)
+    accs=[]
+    vals=[]
+    for img in [["gasf"], ["gadf"], ["mtf"], ["rcp"]]:
+        acc, val=validate_IMG(img_train, images=img, class_dict=fetcher.get_class_dict(), sweep=False)
+        accs.append(acc)
+        vals.append(val)
+    print("Accuracy:")
+    for item in accs:
+        print(item)
+    print("Validation:")
+    for item in vals:
+        print(item)
