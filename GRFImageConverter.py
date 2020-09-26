@@ -1023,8 +1023,8 @@ def _apply_filter(img, imgFilter):
     return imgFilter.apply(img)
 
 
-def normalize_images(data_dict, images, data_ranges=None):
-    """Normalizes the images of a given dataset into the range of [-1, 1].
+def normalize_images(data_dict, images, orig_ranges=None, new_range=(-1,1)):
+    """Normalizes the images of a given dataset into a given range.
     The data stored under the following keys is normalized (if available): 'afftected', 'affected_val', 'non_affected' and 'non_affected_val'.
 
     Parameters:
@@ -1038,9 +1038,12 @@ def normalize_images(data_dict, images, data_ranges=None):
         If there is a validiation set that should be normalized as well.
         max_val = min_val = 0.5
 
-   data_ranges : list of tupels (one for each image) of shape (min, max), default=None,
+   orig_ranges : list of tupels (one for each image) of shape (min, max), default=None,
         Original range of the image-data.
         If None, an attempt is made to automatically infer the range from the data.
+
+    new_range : tupel of shape (min, max)
+        The desired range of the data.
     
     ----------
     Returns:
@@ -1049,13 +1052,23 @@ def normalize_images(data_dict, images, data_ranges=None):
 
     ----------
     Raises:
-    ValueError : If 'data_range' is not None and does not contain at least 2 values.
+    ValueError : If 'new_range' does not contain exactly 2 values.
+    ValueError : If the new minimum value is greater or equal to the new maximum value.
     """
 
-    if data_ranges is None:
-        data_ranges = [None for x in len(images)]
+    if len(new_range) != 2:
+        raise ValueError("Expected new range to be a tuple of dim(2) bot received dim({})".format(len(new_range)))
 
-    for image, drange in zip(images, data_ranges):
+    new_min = new_range[0]
+    new_max = new_range[1]
+
+    if new_min >= new_max:
+        raise ValueError("The desired range is invalid because min >= max ({}>={}).".format(new_min, new_max))
+
+    if orig_ranges is None:
+        orig_ranges = [None for x in range(len(images))]
+
+    for image, drange in zip(images, orig_ranges):
         if drange is None:
             vmin = np.amin(data_dict["affected"][image])
             vmax = np.amax(data_dict["affected"][image])
@@ -1073,6 +1086,6 @@ def normalize_images(data_dict, images, data_ranges=None):
             vmax = drange[1]
 
         for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
-            data_dict[key][image] = (data_dict[key][image]-vmax+data_dict[key][image]-vmin)/(vmax-vmin)
+            data_dict[key][image] = new_min+ ((data_dict[key][image]-vmin)*(new_max-new_min))/(vmax-vmin)
 
     return data_dict

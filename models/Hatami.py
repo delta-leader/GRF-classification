@@ -106,7 +106,7 @@ def create_config():
         "filters0": 32, #36, #32
         "filters1": 32,
         "kernel0": 3, #9, #3
-        "kernel1": 3. #10, #3
+        "kernel1": 3, #10, #3
         "padding": "valid",
         "pool_size": 2,
         "dropout_cnn": 0.25, #0.2322811230216193, #0.25
@@ -319,28 +319,29 @@ if __name__ == "__main__":
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
 
-    conv_args = {
-        "images": ["gasf"],
-        "filter": None,
-        "filter_size": (7,7),
-        "num_bins": 20,
-        "range": (-1, 1),
-        "dims": 3,
-        "delay": 4,
-        "metric": "euclidean"
-    }
-    converter = GRFImageConverter()
-    #if this is used with sweep, tensorflow will use the CPU
-    #converter.enableGpu()
-    imgFilter = None
-    if conv_args["filter"] is not None:
-        imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
-    img_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
-    #img_train = normalize_images(img_train, images=["mtf"], data_ranges=[(0,1)])
+    for dim, delay in [(2,2),(2,3),(2,4),(2,5),(2,7),(2,8),(2,15),(3,2),(3,3),(3,4),(3,5),(3,7),(3,8),(3,15),(4,2),(4,3),(4,4),(4,5),(4,7),(4,8),(4,15)]:
+        conv_args = {
+            "images": ["rcp"],
+            "filter": None,
+            "filter_size": (7,7),
+            "num_bins": 20,
+            "range": (-1, 1),
+            "dims": dim,
+            "delay": delay,
+            "metric": "euclidean"
+        }
+        converter = GRFImageConverter()
+        #if this is used with sweep, tensorflow will use the CPU
+        #converter.enableGpu()
+        imgFilter = None
+        if conv_args["filter"] is not None:
+            imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
+        img_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args, imgFilter=imgFilter)
+        #img_train = normalize_images(img_train, images=["rcp"])
 
 
-    img_train["label"] = train["label"]
-    if "label_val" in train.keys():
-        img_train["label_val"] = train["label_val"]
+        img_train["label"] = train["label"]
+        if "label_val" in train.keys():
+            img_train["label_val"] = train["label_val"]
 
-    validate_IMG(img_train, images=conv_args["images"], class_dict=fetcher.get_class_dict(), sweep=False)
+        #validate_IMG(img_train, images=conv_args["images"], class_dict=fetcher.get_class_dict(), sweep=False)
