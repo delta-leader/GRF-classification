@@ -1021,3 +1021,58 @@ def _apply_filter(img, imgFilter):
         return img
 
     return imgFilter.apply(img)
+
+
+def normalize_images(data_dict, images, data_ranges=None):
+    """Normalizes the images of a given dataset into the range of [-1, 1].
+    The data stored under the following keys is normalized (if available): 'afftected', 'affected_val', 'non_affected' and 'non_affected_val'.
+
+    Parameters:
+    data_dict : dict
+        Containing the data. Must at least contain the key "affected".
+
+    images : list
+        Contains the list of images to be normalized.
+
+    val_set : bool, default=False
+        If there is a validiation set that should be normalized as well.
+        max_val = min_val = 0.5
+
+   data_ranges : list of tupels (one for each image) of shape (min, max), default=None,
+        Original range of the image-data.
+        If None, an attempt is made to automatically infer the range from the data.
+    
+    ----------
+    Returns:
+    data_dict : dict
+        The normalized dictionary.
+
+    ----------
+    Raises:
+    ValueError : If 'data_range' is not None and does not contain at least 2 values.
+    """
+
+    if data_ranges is None:
+        data_ranges = [None for x in len(images)]
+
+    for image, drange in zip(images, data_ranges):
+        if drange is None:
+            vmin = np.amin(data_dict["affected"][image])
+            vmax = np.amax(data_dict["affected"][image])
+
+            for key in ["affected_val", "non_affected", "non_affected_val"]:
+                if key in data_dict.keys():
+                    dmin = np.amin(data_dict[key][image])
+                    dmax = np.amax(data_dict[key][image])
+                    if dmin < vmin:
+                        vmin = dmin
+                    if dmax > vmax:
+                        vmax = dmax   
+        else:
+            vmin = drange[0]
+            vmax = drange[1]
+
+        for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
+            data_dict[key][image] = (data_dict[key][image]-vmax+data_dict[key][image]-vmin)/(vmax-vmin)
+
+    return data_dict

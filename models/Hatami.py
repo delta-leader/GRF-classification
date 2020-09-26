@@ -7,7 +7,7 @@ from collections import namedtuple
 from DataFetcher import DataFetcher
 from GRFScaler import GRFScaler
 from ModelTester import ModelTester, resetRand, wandb_init
-from GRFImageConverter import GRFImageConverter
+from GRFImageConverter import GRFImageConverter, normalize_images
 from ImageFilter import ImageFilter
 
 from tensorflow.keras import Input
@@ -103,15 +103,15 @@ def create_config():
 
     config = {
         "layers": 2,
-        "filters0": 36,
+        "filters0": 32, #36, #32
         "filters1": 32,
-        "kernel0": 9,
-        "kernel1": 10,
+        "kernel0": 3, #9, #3
+        "kernel1": 3. #10, #3
         "padding": "valid",
         "pool_size": 2,
-        "dropout_cnn": 0.2322811230216193,
+        "dropout_cnn": 0.25, #0.2322811230216193, #0.25
         "neurons": 128,
-        "dropout_mlp": 0.45561536933924407,
+        "dropout_mlp": 0.5, #0.45561536933924407, #0.5
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
@@ -320,7 +320,7 @@ if __name__ == "__main__":
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
 
     conv_args = {
-        "images": ["gadf"],
+        "images": ["gasf"],
         "filter": None,
         "filter_size": (7,7),
         "num_bins": 20,
@@ -336,6 +336,9 @@ if __name__ == "__main__":
     if conv_args["filter"] is not None:
         imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
     img_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
+    #img_train = normalize_images(img_train, images=["mtf"], data_ranges=[(0,1)])
+
+
     img_train["label"] = train["label"]
     if "label_val" in train.keys():
         img_train["label_val"] = train["label_val"]
