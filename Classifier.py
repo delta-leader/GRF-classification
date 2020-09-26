@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 
-from DataFetcher import DataFetcher
+from DataFetcher import DataFetcher, set_valSet
 from GRFScaler import GRFScaler
 from ModelTester import ModelTester, resetRand
 from GRFImageConverter import GRFImageConverter
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
     val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
     train = set_valSet(train, val, parse="SESSION_ID")
 
