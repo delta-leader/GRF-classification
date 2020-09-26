@@ -338,26 +338,36 @@ if __name__ == "__main__":
     gaf = converter.convert(train0, conversions=["gaf"], conv_args=conv_args)
     mtf = converter.convert(train1, conversions=["mtf"], conv_args=conv_args, imgFilter=imgFilter)
     rcp = converter.convert(train1, conversions=["rcp"], conv_args=conv_args)
-    rcp = normalize_images(img_train, images=["rcp"], new_range=(0,1))
+    rcp = normalize_images(rcp, images=["rcp"], new_range=(0,1))
 
-    img_train["label"] = train1["label"]
-    img_train["label_val"] = train1["label_val"]
-    img_train["affected"]["gasf"] = gaf["affected"]["gasf"]
-    img_train["affected_val"]["gasf"] = gaf["affected_val"]["gasf"]
-    img_train["non_affected"]["gasf"] = gaf["non_affected"]["gasf"]
-    img_train["non_affected_val"]["gasf"] = gaf["non_affected_val"]["gasf"]
-    img_train["affected"]["gadf"] = gaf["affected"]["gadf"]
-    img_train["affected_val"]["gadf"] = gaf["affected_val"]["gadf"]
-    img_train["non_affected"]["gadf"] = gaf["non_affected"]["gadf"]
-    img_train["non_affected_val"]["gadf"] = gaf["non_affected_val"]["gadf"]
-    img_train["affected"]["mtf"] = mtf["affected"]["mtf"]
-    img_train["affected_val"]["mtf"] = mtf["affected_val"]["mtf"]
-    img_train["non_affected"]["mtf"] = mtf["non_affected"]["mtf"]
-    img_train["non_affected_val"]["mtf"] = mtf["non_affected_val"]["mtf"]
-    img_train["affected"]["rcp"] = rcp["affected"]["rcp"]
-    img_train["affected_val"]["rcp"] = rcp["affected_val"]["rcp"]
-    img_train["non_affected"]["rcp"] = rcp["non_affected"]["rcp"]
-    img_train["non_affected_val"]["rcp"] = rcp["non_affected_val"]["rcp"]
+    img_train={
+        "label": train1["label"],
+        "label_val": train1["label_val"],
+        "affected":{
+            "gasf": gaf["affected"]["gasf"],
+            "gadf":gaf["affected"]["gadf"],
+            "mtf": mtf["affected"]["mtf"],
+            "rcp": rcp["affected"]["rcp"]
+        },
+        "affected_val":{
+            "gasf": gaf["affected_val"]["gasf"],
+            "gadf":gaf["affected_val"]["gadf"],
+            "mtf": mtf["affected_val"]["mtf"],
+            "rcp": rcp["affected_val"]["rcp"]
+        },
+        "non_affected":{
+            "gasf": gaf["non_affected"]["gasf"],
+            "gadf":gaf["non_affected"]["gadf"],
+            "mtf": mtf["non_affected"]["mtf"],
+            "rcp": rcp["non_affected"]["rcp"]
+        },
+        "non_affected_val":{
+            "gasf": gaf["non_affected_val"]["gasf"],
+            "gadf":gaf["non_affected_val"]["gadf"],
+            "mtf": mtf["non_affected_val"]["mtf"],
+            "rcp": rcp["non_affected_val"]["rcp"]
+        },
+    }
 
     accs=[]
     vals=[]
