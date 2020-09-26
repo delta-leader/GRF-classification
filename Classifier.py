@@ -149,7 +149,7 @@ class Classifier(object):
                 "images": None,
                 "non_affected": True,
                 "config": {
-                    "input_shape": "TS1",
+                    "input_shape": "2D_TS1",
                     "layers": 2,
                     "filters0": 92,
                     "filters1": 134,
@@ -354,12 +354,12 @@ class Classifier(object):
         self.fcns = ["FCN", "FCN-tuned", "FCN-original"]
         self.images =["IMG-original"]
         self.cnns1d = ["1DCNN-strided", "1DCNN-dilated"]
-        self.cnns2d = ["1DCNN-1DKernels", "2DCNN-dilated"]
+        self.cnns2d = ["2DCNN-1DKernels", "2DCNN-dilated"]
         self.lstms = ["LSTM"]
 
     def train_and_predict(self, model, data, test=None, boosting=False, config=None, shape=None, images=None, useNonAffected=True, deterministic=True, name=None, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
         
-        model, shape, images = self.train(model, data, config=config, shape=shape, images=images, useNonAffected=useNonAffected, deterministic=deterministic, name=name, store=True, log=log, save_plot=save_plot, show_plot=show_plot, plot_architecture=plot_architecture, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
+        model, shape, images, useNonAffected = self.train(model, data, config=config, shape=shape, images=images, useNonAffected=useNonAffected, deterministic=deterministic, name=name, store=True, log=log, save_plot=save_plot, show_plot=show_plot, plot_architecture=plot_architecture, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
         if test is None:
             self.predict(model=model, data=data, val_set=True, boosting=boosting, shape=shape, images=images, useNonAffected=useNonAffected, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
         else:
@@ -470,7 +470,7 @@ class Classifier(object):
         if store:
             print("The trained model can be loaded from '{}'.".format(storepath))
 
-        return storepath, shape, images
+        return storepath, shape, images, useNonAffected
 
 
     def __create_tester(self, loss, metrics, class_dict, filepath):
@@ -493,13 +493,13 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
-    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=False, val_setp=0, include_info=True, clip=True)
+    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=True)
     train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
 
-    #converter = GRFImageConverter()
+    converter = GRFImageConverter()
     conv_args ={
                     "num_bins": 25,
                     "range": (-1, 1),
@@ -507,12 +507,12 @@ if __name__ == "__main__":
                     "delay": 3,
                     "metric": "euclidean"
                 },
-    #img_data = converter.convert(train, conversions=["gaf"], conv_args=conv_args)
-    #for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
-    #    train[key] = img_data[key]
+    img_data = converter.convert(train, conversions=["gaf"], conv_args=conv_args)
+    for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
+        train[key] = img_data[key]
 
-    #classifier.predict("IMG-original", train, val_set=True, boosting=True, images=["gasf"])
-    classifier.train_and_predict("MLP1", train, shape="1D", name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=True)
+    classifier.predict("IMG-oroginal", train, val_set=True, boosting=True)
+    #classifier.train_and_predict("MLP1", train, shape="1D", name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=True)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     
