@@ -6,6 +6,9 @@ from GRFScaler import GRFScaler
 from ModelTester import ModelTester, resetRand
 from GRFImageConverter import GRFImageConverter
 from models.MLP import create_MLP
+from models.CNN1D import create_1DCNN
+from models.CNN2D import create_2DCNN
+from models.Alharthi import create_LSTM
 from models.FCN import create_FCN
 from models.Hatami import create_IMG
 
@@ -350,6 +353,9 @@ class Classifier(object):
         self.mlps = ["MLP", "MLP1", "MLP2"]
         self.fcns = ["FCN", "FCN-tuned", "FCN-original"]
         self.images =["IMG-original"]
+        self.cnns1d = ["1DCNN-strided", "1DCNN-dilated"]
+        self.cnns2d = ["1DCNN-1DKernels", "2DCNN-dilated"]
+        self.lstms = ["LSTM"]
 
     def train_and_predict(self, model, data, test=None, boosting=False, config=None, shape=None, images=None, useNonAffected=True, deterministic=True, name=None, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
         
@@ -405,6 +411,25 @@ class Classifier(object):
                 raise ValueError("A MLP can only be trained with shape='1D'.")
             if images is not None:
                 raise ValueError("Images have been specified, but the MLP can not be used to classify image-data.")
+
+        if model in self.cnns1d:
+            keras_model = create_1DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+            if shape != "1D":
+                raise ValueError("A 1DCNN can only be trained with shape='1D'.")
+            if images is not None:
+                raise ValueError("Images have been specified, but the 1DCNN can not be used to classify image-data.")
+        if model in self.lstms:
+            keras_model = create_LSTM(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+            if shape != "1D":
+                raise ValueError("A LSTM can only be trained with shape='1D'.")
+            if images is not None:
+                raise ValueError("Images have been specified, but the LSTM can not be used to classify image-data.")
+        if model in self.cnns2d:
+            keras_model = create_2DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2, 1), config=config)
+            if shape != "2D_TS1":
+                raise ValueError("A 2DCNN can only be trained with shape='2D_TS1'.")
+            if images is not None:
+                raise ValueError("Images have been specified, but the 2DCNN can not be used to classify image-data.")
         if model in self.fcns:
             keras_model = create_FCN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
             if shape != "1D":
@@ -463,19 +488,31 @@ class Classifier(object):
 
 
 if __name__ == "__main__":
-    #filepath = "../.."
+    #filepath = "../"
     filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
-    scaler = GRFScaler(scalertype="MinMax", featureRange=(0,1))
+    scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=True)
-    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True)
-    #train = set_valSet(train, val, parse="SESSION_ID")
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
+    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
+    train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
 
-    #classifier.predict("FCN-original", train, val_set=True, boosting=True)
-    classifier.train_and_predict("IMG-original", train, images=["gasf"], name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False)
+    #converter = GRFImageConverter()
+    conv_args ={
+                    "num_bins": 25,
+                    "range": (-1, 1),
+                    "dims": 2,
+                    "delay": 3,
+                    "metric": "euclidean"
+                },
+    #img_data = converter.convert(train, conversions=["gaf"], conv_args=conv_args)
+    #for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
+    #    train[key] = img_data[key]
+
+    #classifier.predict("IMG-original", train, val_set=True, boosting=True, images=["gasf"])
+    classifier.train_and_predict("MLP1", train, shape="1D", name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=True)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     
