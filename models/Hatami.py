@@ -23,7 +23,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "IMG Sweep",
+        "name": "IMG Sweep - Hyperparameters",
         "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -31,36 +31,36 @@ def create_sweep_config():
             "goal": "maximize"
         },
         "parameters": {
-            "filters0": {
-                "distribution": "int_uniform",
-                "min": 16,
-                "max": 64
-            },
-            "filters1": {
-                "distribution": "int_uniform",
-                "min": 16,
-                "max": 64
-            },
-            "kernel0": {
-                "distribution": "int_uniform",
-                "min": 3,
-                "max": 10
-            },
-            "kernel1": {
-                "distribution": "int_uniform",
-                "min": 3,
-                "max": 10
-            },
-            "dropout_cnn": {
-                "distribution": "uniform",
-                "min": 0.1,
-                "max": 0.5
-            },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.3,
-                "max": 0.6
-            },
+            #"filters0": {
+            #    "distribution": "int_uniform",
+            #    "min": 16,
+            #    "max": 64
+            #},
+            #"filters1": {
+            #    "distribution": "int_uniform",
+            #    "min": 16,
+            #    "max": 64
+            #},
+            #"kernel0": {
+            #    "distribution": "int_uniform",
+            #    "min": 3,
+            #    "max": 10
+            #},
+            #"kernel1": {
+            #    "distribution": "int_uniform",
+            #    "min": 3,
+            #    "max": 10
+            #},
+            #"dropout_cnn": {
+            #    "distribution": "uniform",
+            #    "min": 0.1,
+            #    "max": 0.5
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.3,
+            #    "max": 0.6
+            #},
             #"learning_rate":{
             #    "distribution": "uniform",
             #    "min": 0.0001,
@@ -103,15 +103,15 @@ def create_config():
 
     config = {
         "layers": 2,
-        "filters0": 61,
+        "filters0": 36,
         "filters1": 32,
-        "kernel0": 4,
-        "kernel1": 4,
+        "kernel0": 9,
+        "kernel1": 10,
         "padding": "valid",
         "pool_size": 2,
-        "dropout_cnn": 0.36603079773990754,
+        "dropout_cnn": 0.2322811230216193,
         "neurons": 128,
-        "dropout_mlp": 0.3327475305569613,
+        "dropout_mlp": 0.45561536933924407,
         "activation": "relu",
         "final_activation": "softmax",
         "regularizer": None,
@@ -340,4 +340,4 @@ if __name__ == "__main__":
     if "label_val" in train.keys():
         img_train["label_val"] = train["label_val"]
 
-    validate_IMG(img_train, images=conv_args["images"] class_dict=fetcher.get_class_dict(), sweep=True)
+    validate_IMG(img_train, images=conv_args["images"], class_dict=fetcher.get_class_dict(), sweep=False)
