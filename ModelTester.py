@@ -472,7 +472,9 @@ def _create_confusion_matrix(labels, expected_labels):
     if labels.shape != expected_labels.shape:
         raise ValueError("Something went wrong during the label prediction. Length of the final labels does not match.")
 
-    conf_mat = np.zeros((5, 5), dtype=int)
+    _, counts = np.unique(expected_labels, return_counts=True)
+    num_labels = counts.shape[0]
+    conf_mat = np.zeros((num_labels, num_labels), dtype=int)
     for i in range(labels.shape[0]):
         conf_mat[labels[i], expected_labels[i]] += 1
 

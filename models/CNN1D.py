@@ -22,7 +22,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "1DCNN Sweep 1Layer (dilated)",
+        "name": "1DCNN Sweep 1Layer (strided) - 3 Classes",
         "method": "bayes",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
@@ -130,28 +130,21 @@ def create_config():
     """Creates the configuration file with the settings for the 1DCNN."""
 
     config = {
-        "layers": 2,
-        "filters0": 131,
-        "filters1": 31,
-        "filters2": 32,
-        "kernel0": 18,
-        "kernel1": 6,
-        "kernel2": 3,
-        "stride0": 1,
-        "stride1": 1,
-        "stride2": 1,
-        "dilation0": 12,
-        "dilation1": 14,
-        "dilation2": 1,
+        "layers": 1,
+        "class_number": 3,
+        "filters0": 175,
+        "kernel0": 5,
+        "stride0": 5,
+        "dilation0": 1,
         "batch_normalization": False,
         "pool_type": "max",
-        "pool_size": 3,
+        "pool_size": 4,
         "pool_stride": None,
-        "neurons": 46,
-        "dropout_cnn": 0.14204535896572307,
-        "dropout_mlp": 0.43700599895787645,
+        "neurons": 185,
+        "dropout_cnn": 0.38775318271939535,
+        "dropout_mlp": 0.31552753454565335,
         "separable": False,
-        "skipConnections": False,
+        "skipConnections": True,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
@@ -225,7 +218,7 @@ def create_1DCNN(input_shape, config):
         if config.dropout_mlp is not None:
             conv = Dropout(rate=config.dropout_mlp)(conv)
 
-    out = Dense(5, activation=config.final_activation, kernel_regularizer=config.regularizer)(conv)
+    out = Dense(config.class_number, activation=config.final_activation, kernel_regularizer=config.regularizer)(conv)
 
     model = Model(input_layer, out)
     
@@ -286,12 +279,14 @@ if __name__ == "__main__":
     filepath = "../.."
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
+    class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
+    fetcher.set_class_dict(class_dict)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=False, val_setp=0, include_info=True)
-    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
-    train = set_valSet(train, val, parse="SESSION_ID")
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
+    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
+    #train = set_valSet(train, val, parse="SESSION_ID")
     
-    validate_1DCNN(train, sweep=False, class_dict=fetcher.get_class_dict())
+    validate_1DCNN(train, sweep=True, class_dict=fetcher.get_class_dict())
 
    

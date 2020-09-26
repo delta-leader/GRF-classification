@@ -70,7 +70,7 @@ class DataFetcher(object):
 
     
     def get_class_dict(self):
-        """Returns the dictionary used to convert the class-lables into integer values
+        """Returns the dictionary used to convert the class-lables into integer values.
 
         Returns:
         class_dict : dict
@@ -78,6 +78,24 @@ class DataFetcher(object):
         """
 
         return self.class_dict
+
+    def set_class_dict(self, class_dict):
+        """Sets the dictionary used to convert the class labels into integer values.
+
+        Parameters:
+        class_dict: dict
+            Tne new class-dictionary. Must contain keys for all labels.
+
+        ----------
+        Raises:
+        ValueError : If one of the class labels is not available as a key in the dictionary.
+        """
+
+        for key in self.class_dict.keys():
+            if key not in class_dict.keys():
+                raise ValueError("Key '{}' is not available in the new class-dictionary".format(key))
+        
+        self.class_dict = class_dict
 
 
     def set_randSeed(self, seed):
