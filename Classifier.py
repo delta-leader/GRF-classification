@@ -359,7 +359,7 @@ class Classifier(object):
 
     def train_and_predict(self, model, data, test=None, boosting=False, config=None, shape=None, images=None, useNonAffected=True, deterministic=True, name=None, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
         
-        model, shape, images, useNonAffected = self.train(model, data, config=config, shape=shape, images=images, useNonAffected=useNonAffected, deterministic=deterministic, name=name, store=True, log=log, save_plot=save_plot, show_plot=show_plot, plot_architecture=plot_architecture, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
+        model, shape, images, useNonAffected, data = self.train(model, data, config=config, shape=shape, images=images, useNonAffected=useNonAffected, deterministic=deterministic, name=name, store=True, log=log, save_plot=save_plot, show_plot=show_plot, plot_architecture=plot_architecture, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
         if test is None:
             self.predict(model=model, data=data, val_set=True, boosting=boosting, shape=shape, images=images, useNonAffected=useNonAffected, loss=loss, metrics=metrics, class_dict=class_dict, filepath=filepath)
         else:
@@ -470,7 +470,7 @@ class Classifier(object):
         if store:
             print("The trained model can be loaded from '{}'.".format(storepath))
 
-        return storepath, shape, images, useNonAffected
+        return storepath, shape, images, useNonAffected, data
 
 
     def __create_tester(self, loss, metrics, class_dict, filepath):
@@ -511,7 +511,7 @@ if __name__ == "__main__":
     for key in ["affected", "non_affected", "affected_val", "non_affected_val"]:
         train[key] = img_data[key]
 
-    classifier.predict("IMG-oroginal", train, val_set=True, boosting=True)
+    classifier.predict("IMG-original", train, val_set=True, boosting=True)
     #classifier.train_and_predict("MLP1", train, shape="1D", name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=True)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
