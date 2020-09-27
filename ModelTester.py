@@ -122,6 +122,16 @@ class ModelTester(object):
             predicted_labels = np.argmax(predictions, axis=1)
             labels = data_dict["label"+val_suffix]
 
+        mask = data_dict["info"]['AFFECTED_SIDE'] == 2
+        corr =predicted_labels[mask] == labels[mask]
+        print(np.unique(corr, return_counts=True))
+        #mask_pred = (predicted_labels != 1)
+        #mask_orig = (labels == 1)
+        #combined_mask = np.stack([mask_pred, mask_orig], axis=-1).all(axis=1)
+        #print(np.unique(data_dict["label"], return_counts=True))
+        #print(data_dict["info_val"]["CLASS_LABEL_DETAILED"][combined_mask].value_counts())
+        
+
         conf_mat = _create_confusion_matrix(predicted_labels, labels)
         print("Confusion Matrix (Rows=Prediction, Columns=Real):")
         reverse_dict = dict((v,k) for k,v in self.class_dict.items())
