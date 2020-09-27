@@ -75,7 +75,7 @@ class Classifier(object):
                 "file": "models/saved_models/1DCNN-strided.h5",
                 "shape": "1D",
                 "images": None,
-                "non_affected": False,
+                "non_affected": True,
                 "config": {
                     "layers": 1,
                     "class_number": 5,
@@ -414,7 +414,7 @@ class Classifier(object):
                 raise ValueError("Images have been specified, but the MLP can not be used to classify image-data.")
 
         if model in self.cnns1d:
-            keras_model = create_1DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]), config=config)
+            keras_model = create_1DCNN(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
             if shape != "1D":
                 raise ValueError("A 1DCNN can only be trained with shape='1D'.")
             if images is not None:
@@ -489,15 +489,15 @@ class Classifier(object):
 
 
 if __name__ == "__main__":
-    #filepath = "../"
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../"
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
     #class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
     #fetcher.set_class_dict(class_dict)
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=False)
-    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=True)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
+    test = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TEST", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
     #train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
@@ -515,7 +515,7 @@ if __name__ == "__main__":
     #    train[key] = img_data[key]
 
     #classifier.predict("1DCNN-strided", train, val_set=True, boosting=False)
-    classifier.train_and_predict("1DCNN-strided", train, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=True)
+    classifier.train_and_predict("MLP1", train, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=False)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     
