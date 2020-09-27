@@ -392,7 +392,7 @@ class Classifier(object):
         if model in self.models.keys():
             shape = self.models[model]["shape"]
             images = self.models[model]["images"]
-            UseNonAffected = self.models[model]["non_affected"]
+            useNonAffected = self.models[model]["non_affected"]
             config = self.models[model]["config"]
         else:   
             if model in self.generic_models:
@@ -457,7 +457,7 @@ class Classifier(object):
         if plot_architecture:
             tester.save_model_plot(keras_model, name+".png")   
 
-        tester.test_model(keras_model, train=data, config=config, shape=shape, images=images, useNonAffected=UseNonAffected, logfile=logfile, model_name=name, plot_name=name+".png", create_plot=save_plot, show_plot=show_plot, store_model=storepath, boost=False)
+        tester.test_model(keras_model, train=data, config=config, shape=shape, images=images, useNonAffected=useNonAffected, logfile=logfile, model_name=name, plot_name=name+".png", create_plot=save_plot, show_plot=show_plot, store_model=storepath, boost=False)
         if not log:
             os.remove(filepath+logfile)
 
