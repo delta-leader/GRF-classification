@@ -23,74 +23,74 @@ def create_sweep_config():
 
     sweep_config = {
         "name": "1DCNN Sweep 1Layer (strided) - 3 Classes",
-        "method": "bayes",
+        "method": "grid",
         "description": "Find the optimal number of filters, kernel-sizes, etc.",
         "metric": {
             "name": "val_accuracy",
             "goal": "maximize"
         },
         "parameters": {
-            "filters0": {
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 250
-            },
-            #"filters1": {
-            #    "values": [10, 20, 30, 40, 50]
+            #"filters0": {
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 250
+            #},
+            #"filters0": {
+            #    "values": [128]
             #    #"min": 40,
             #    #"max": 190
             #},
-            "batch_normalization": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "separable": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "skipConnections": {
-                "distribution": "categorical",
-                "values": [True, False]
-            },
-            "dropout_cnn": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "dropout_mlp": {
-                "distribution": "uniform",
-                "min": 0.0,
-                "max": 0.5
-            },
-            "kernel0": {
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 20
-            },
-            "pool_type": {
-                "distribution": "categorical",
-                "values": ["max", "avg", None]
-            },
-            "pool_size":{
-                "distribution": "int_uniform",
-                "min": 2,
-                "max": 4
-            },
-            "stride0":{
-                "distribution": "int_uniform",
-                "min": 1,
-                "max": 5
-            },
-            "neurons":{
-                "distribution": "int_uniform",
-                "min": 20,
-                "max": 200
-            },
-            #"kernel1": {
-            #    "values": [(3), (5), (7), (9), (11), (13), (15)]
+            #"batch_normalization": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"separable": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"skipConnections": {
+            #    "distribution": "categorical",
+            #    "values": [True, False]
+            #},
+            #"dropout_cnn": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"dropout_mlp": {
+            #    "distribution": "uniform",
+            #    "min": 0.0,
+            #    "max": 0.5
+            #},
+            #"kernel0": {
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 20
+            #},
+            #"pool_type": {
+            #    "distribution": "categorical",
+            #    "values": ["max", "avg", None]
+            #},
+            #"pool_size":{
+            #    "distribution": "int_uniform",
+            #    "min": 2,
+            #    "max": 4
+            #},
+            #"stride0":{
+            #    "distribution": "int_uniform",
+            #    "min": 1,
+            #    "max": 5
+            #},
+            #"neurons":{
+            #    "distribution": "int_uniform",
+            #    "min": 20,
+            #    "max": 200
+            #},
+            "kernel1": {
+                "values": [(3), (5), (7), (9), (11), (13), (15)]
             #    #"min": 40,
             #    #"max": 190
-            #},
+            },
             #"learning_rate":{
             #    "distribution": "uniform",
             #    "min": 0.0001,
@@ -131,20 +131,20 @@ def create_config():
 
     config = {
         "layers": 1,
-        "class_number": 3,
-        "filters0": 175,
-        "kernel0": 5,
-        "stride0": 5,
+        "class_number": 5,
+        "filters0": 128,
+        "kernel0": 3,
+        "stride0": 1,
         "dilation0": 1,
         "batch_normalization": False,
-        "pool_type": "max",
+        "pool_type": None,
         "pool_size": 4,
         "pool_stride": None,
-        "neurons": 185,
-        "dropout_cnn": 0.38775318271939535,
-        "dropout_mlp": 0.31552753454565335,
+        "neurons": 90,
+        "dropout_cnn": None,
+        "dropout_mlp": None,
         "separable": False,
-        "skipConnections": True,
+        "skipConnections": False,
         "padding": "same",
         "activation": "relu",
         "final_activation": "softmax",
@@ -279,8 +279,8 @@ if __name__ == "__main__":
     filepath = "../.."
     #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
-    class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
-    fetcher.set_class_dict(class_dict)
+    #class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
+    #fetcher.set_class_dict(class_dict)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True)
