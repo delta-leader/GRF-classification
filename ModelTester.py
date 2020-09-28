@@ -122,9 +122,9 @@ class ModelTester(object):
             predicted_labels = np.argmax(predictions, axis=1)
             labels = data_dict["label"+val_suffix]
 
-        mask = data_dict["info"]['AFFECTED_SIDE'] == 2
-        corr =predicted_labels[mask] == labels[mask]
-        print(np.unique(corr, return_counts=True))
+        #mask = data_dict["info"]['AFFECTED_SIDE'] == 2
+        #corr =predicted_labels[mask] == labels[mask]
+        #print(np.unique(corr, return_counts=True))
         #mask_pred = (predicted_labels != 1)
         #mask_orig = (labels == 1)
         #combined_mask = np.stack([mask_pred, mask_orig], axis=-1).all(axis=1)
