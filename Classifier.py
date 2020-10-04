@@ -54,7 +54,7 @@ class Classifier(object):
                 "non_affected": True,
                 "config": {
                     "layers": 1,
-                    "neurons0": 30,
+                    "neurons0": 90,
                     "batch_normalization": False,
                     "dropout": None,
                     "activation": "relu",
@@ -360,6 +360,63 @@ class Classifier(object):
                     "epochs": 100
                 }
             },
+            "ResNet": {
+                "file": "models/saved_models/ResNet.h5",
+                "shape": "1D",
+                "images": None,
+                "non_affected": True,
+                "config": {
+                    "blocks": 3,
+                    "layers": 3,
+                    "filters0": 64,
+                    "filters1": 128,
+                    "filters2": 128,
+                    "kernel0": 8,
+                    "kernel1": 5,
+                    "kernel2": 3,
+                    "padding": "same",
+                    "activation": "relu",
+                    "final_activation": "softmax",
+                    "regularizer": None,
+                    "optimizer": "adam",
+                    "learning_rate": 0.004467472809235925,
+                    "beta_1": 0.6774131799301878,
+                    "beta_2": 0.8608678157238772,
+                    "epsilon": 1e-08,
+                    "amsgrad": True,
+                    "batch_size": 18,
+                    "epochs": 210
+                }
+            },
+            "InceptionTime": {
+                "file": "models/saved_models/InceptionTime.h5",
+                "shape": "1D",
+                "images": None,
+                "non_affected": True,
+                "config": {
+                    "blocks": 2,
+                    "layers": 3,
+                    "bottleneck_size": 5, 
+                    "nb_filters": 32,
+                    "kernel_sizes": [10, 20, 40],
+                    "stride": 1,
+                    "pool_size": 3,
+                    "padding": "same",
+                    "activation": "linear",
+                    "activation_out": "relu",
+                    "final_activation": "softmax",
+                    "regularizer": None,
+                    "use_bias": False,
+                    "optimizer": "adam",
+                    "learning_rate": 0.006321686332796202,
+                    "beta_1": 0.816970790375692,
+                    "beta_2": 0.6258454624275634,
+                    "epsilon": 1e-08,
+                    "amsgrad": True,
+                    "batch_size": 38,
+                    "epochs": 136
+                }
+            },
             "IMG-original": {
                 "file": "models/saved_models/IMG-original.h5",
                 "shape": "IMG_STACK",
@@ -536,16 +593,16 @@ class Classifier(object):
 
 
 if __name__ == "__main__":
-    filepath = "../"
-    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    #filepath = "../"
+    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
     #class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
     #fetcher.set_class_dict(class_dict)
     #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=True)
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False, clip=False)
-    test = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TEST", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=False, clip=False)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=False)
+    test = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TEST", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0, include_info=False, clip=False)
     #train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
@@ -562,8 +619,8 @@ if __name__ == "__main__":
     #for key in ["affected", "non_affected"]:
     #    test[key] = img_data[key]
 
-    #classifier.predict("IMG-original", test, images=["gadf"], val_set=False, boosting=False)
-    classifier.train_and_predict("MLP30", train, test, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=False)
+    classifier.predict("1DCNN-strided", test, images=[], val_set=False, boosting=False)
+    #classifier.train_and_predict("MLP30", train, test, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=False)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     
