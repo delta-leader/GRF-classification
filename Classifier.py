@@ -11,6 +11,8 @@ from models.CNN2D import create_2DCNN
 from models.Alharthi import create_LSTM
 from models.FCN import create_FCN
 from models.Hatami import create_IMG
+from models.ResNet import create_ResNet
+from models.InceptionTime import create_InceptionTime
 
 class Classifier(object):
     """Wrapper class for saving model configurations and settings.
@@ -457,6 +459,8 @@ class Classifier(object):
         self.generic_models = ["MLP", "1DCNN", "FCN", "IMG"]
         self.mlps = ["MLP", "MLP30", "MLP90", "MLP2", "MLP-D"]
         self.fcns = ["FCN", "FCN-tuned", "FCN-original"]
+        self.resnets = ["ResNet"]
+        self.icts = ["InceptionTime"]
         self.images =["IMG-original"]
         self.cnns1d = ["1DCNN-strided", "1DCNN-dilated"]
         self.cnns2d = ["2DCNN-1DKernels", "2DCNN-dilated"]
@@ -550,6 +554,19 @@ class Classifier(object):
             count = len(images)
             keras_model = create_IMG(input_shape=(data["affected"][img].shape[1], data["affected"][img].shape[2], data["affected"][img].shape[3]*count*2), config=config)
             
+        if model in self.resnets:
+            keras_model = create_ResNet(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+            if shape != "1D":
+                raise ValueError("A ResNet can only be trained with shape='1D'.")
+            if images is not None:
+                raise ValueError("Images have been specified, but ResNet can not be used to classify image-data.")
+
+        if model in self.icts:
+            keras_model = create_InceptionTime(input_shape=(train["affected"].shape[1], train["affected"].shape[2]*2), config=config)
+            if shape != "1D":
+                raise ValueError("IncpetionTime can only be trained with shape='1D'.")
+            if images is not None:
+                raise ValueError("Images have been specified, but InceptionTime can not be used to classify image-data.")
 
         if filepath is None:
             filepath = "models/output/"+name+"/"
