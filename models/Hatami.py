@@ -334,8 +334,9 @@ if __name__ == "__main__":
     converter = GRFImageConverter()
     #if this is used with sweep, tensorflow will use the CPU
     #converter.enableGpu()
-    imgFilter = ImageFilter("avg", (2,2))
-    gaf = converter.convert(train0, conversions=["gaf"], conv_args=conv_args)
+    imgFilter = ImageFilter("avg", (2,2), output_size=(98,98))
+    resize = ImageFilter("resize", output_size=(98,98))
+    gaf = converter.convert(train0, conversions=["gaf"], conv_args=conv_args, imgFilter=resize)
     mtf = converter.convert(train1, conversions=["mtf"], conv_args=conv_args, imgFilter=imgFilter)
     rcp = converter.convert(train1, conversions=["rcp"], conv_args=conv_args)
     rcp = normalize_images(rcp, images=["rcp"], new_range=(0,1))
@@ -371,7 +372,7 @@ if __name__ == "__main__":
 
     accs=[]
     vals=[]
-    for img in [["gasf"], ["gadf"], ["mtf"], ["rcp"]]:
+    for img in [["gasf", "mtf", "rcp"], ["gadf", "mtf", "rcp"], ["gadf", "gasf", "mtf","rcp"]]:
         acc, val=validate_IMG(img_train, images=img, class_dict=fetcher.get_class_dict(), sweep=False)
         accs.append(acc)
         vals.append(val)
