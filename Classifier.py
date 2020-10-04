@@ -24,8 +24,54 @@ class Classifier(object):
 
     def __init__(self):
         self.models ={
-            "MLP1": {
-                "file": "models/saved_models/MLP1.h5",
+            "MLP30": {
+                "file": "models/saved_models/MLP30.h5",
+                "shape": "1D",
+                "images": None,
+                "non_affected": True,
+                "config": {
+                    "layers": 1,
+                    "neurons0": 30,
+                    "batch_normalization": False,
+                    "dropout": None,
+                    "activation": "relu",
+                    "final_activation": "softmax",
+                    "regularizer": None,
+                    "optimizer": "adam",
+                    "learning_rate": 0.001,
+                    "beta_1": 0.9,
+                    "beta_2": 0.999,
+                    "epsilon": 1e-07,
+                    "amsgrad": False,
+                    "batch_size": 32,
+                    "epochs": 100
+                }
+            },
+            "MLP90": {
+                "file": "models/saved_models/MLP90.h5",
+                "shape": "1D",
+                "images": None,
+                "non_affected": True,
+                "config": {
+                    "layers": 1,
+                    "neurons0": 30,
+                    "batch_normalization": False,
+                    "dropout": None,
+                    "activation": "relu",
+                    "final_activation": "softmax",
+                    "regularizer": None,
+                    "optimizer": "adam",
+                    "learning_rate": 0.001,
+                    "beta_1": 0.9,
+                    "beta_2": 0.999,
+                    "epsilon": 1e-07,
+                    "amsgrad": False,
+                    "batch_size": 32,
+                    "epochs": 100
+                }
+            },
+            "MLP-D": {
+                "file": "models/saved_models/MLPD.h5",
                 "shape": "1D",
                 "images": None,
                 "non_affected": True,
@@ -352,7 +398,7 @@ class Classifier(object):
             },
         }
         self.generic_models = ["MLP", "1DCNN", "FCN", "IMG"]
-        self.mlps = ["MLP", "MLP1", "MLP2"]
+        self.mlps = ["MLP", "MLP30", "MLP90", "MLP2", "MLP-D"]
         self.fcns = ["FCN", "FCN-tuned", "FCN-original"]
         self.images =["IMG-original"]
         self.cnns1d = ["1DCNN-strided", "1DCNN-dilated"]
@@ -490,23 +536,21 @@ class Classifier(object):
 
 
 if __name__ == "__main__":
-    #filepath = "../"
-    filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
+    filepath = "../"
+    #filepath = "/media/thomas/Data/TT/Masterarbeit/final_data/GAITREC/"
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     #scaler = GRFScaler(scalertype="standard")
     #class_dict = {"HC":0, "H":1, "K":1, "A":2, "C":2}
     #fetcher.set_class_dict(class_dict)
-    val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=True, clip=False)
-    scaler.reset()
-    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=False, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
-    
-    #test = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="None", dropBothSidesAffected=False, dataset="TEST", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=True, clip=False)
-    train = set_valSet(train, val, parse=None)
+    #val = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=True, clip=True)
+    train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0.2, include_info=False, clip=False)
+    test = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TEST", stepsize=1, averageTrials=True, scaler=scaler, concat=True, val_setp=0, include_info=False, clip=False)
+    #train = set_valSet(train, val, parse="SESSION_ID")
 
     classifier = Classifier()
 
-    #converter = GRFImageConverter()
+    converter = GRFImageConverter()
     conv_args ={
                     "num_bins": 25,
                     "range": (-1, 1),
@@ -518,8 +562,8 @@ if __name__ == "__main__":
     #for key in ["affected", "non_affected"]:
     #    test[key] = img_data[key]
 
-    #classifier.predict("FCN-original", test, val_set=False, boosting=False)
-    classifier.train_and_predict("MLP1", train, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=False)
+    #classifier.predict("IMG-original", test, images=["gadf"], val_set=False, boosting=False)
+    classifier.train_and_predict("MLP30", train, test, name=None, log=False, save_plot=False, show_plot=False, plot_architecture=False, boosting=False)
     #train(self, model, data, deterministic=True, name=None, store=True, log=True, save_plot=False, show_plot=True, plot_architecture=False, loss=None, metrics=None, class_dict=None, filepath=None):
     #classifier.predict("models/output/MLP1/MLP1.h5", train, val_set=True, boosting=False)
     

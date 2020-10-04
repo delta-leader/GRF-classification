@@ -700,7 +700,7 @@ def _majority_voting(data, predictions, val_set=True):
         mask = (session_pred > 0.4)
         mask = np.any(mask, axis=1)
         if not mask.any():
-            mask = (session_pred > 0.3)
+            mask = (session_pred > 0.2)
             mask = np.any(mask, axis=1)
         predicted_labels = np.argmax(session_pred[mask,:], axis=1)
         counts = np.bincount(predicted_labels)
