@@ -9,7 +9,7 @@ from collections import namedtuple
 from DataFetcher import DataFetcher
 from GRFScaler import GRFScaler
 from ModelTester import ModelTester, resetRand, wandb_init
-from GRFImageConverter import GRFImageConverter
+from GRFImageConverter import GRFImageConverter, normalize_images
 from ImageFilter import ImageFilter
 
 from tensorflow.keras import Input
@@ -28,7 +28,7 @@ def create_sweep_config():
     """
 
     sweep_config = {
-        "name": "Inception Sweep 2",
+        "name": "Inception Sweep",
         "method": "bayes",
         "description": "Find the optimal hyperparameters.",
         "metric": {
@@ -158,9 +158,7 @@ def validate_Inception(train, test=None, class_dict=None, sweep=False):
         def trainNN():
             config = wandb_init(create_config())
             resetRand()
-            #model = create_Inception(input_shape=(train["affected"].shape[1],), config=config)
-            input_tensor = Input(shape=(train["affected"].shape[1], train["affected"].shape[1], 1))
-            model = InceptionV3(include_top=True, weights=None, input_tensor=input_tensor, input_shape=None, pooling=None, classes=5)
+            model = create_Inception(input_shape=(train["affected"].shape[1],), config=config)
             tester.perform_sweep(model, config, train, shape=None, useNonAffected=False)
             
         sweep_id=wandb.sweep(sweep_config, entity="delta-leader", project="diplomarbeit")
@@ -248,21 +246,23 @@ def prepare_images(data_dict, norms, images, val_set=False, colormap=mpl.cm.jet,
             new_data = np.concatenate([data_dict["non_affected"+val_suffix][image][:,:,:,i] for i in range(5)], axis=-1)
             data = np.concatenate([data, new_data], axis=-2)
         
-        #vmin = norms[image][0]
-        #vmax = norms[image][1]
-        #norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        #mapping = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-        #data = np.apply_along_axis(lambda x: mapping.to_rgba(x, bytes=True), 0, data)
-        #data = np.moveaxis(data, 1, -1)[:,:,:,:3]
-        data = np.expand_dims(data, -1)
+        vmin = norms[image][0]
+        vmax = norms[image][1]
+        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        mapping = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+        data = np.apply_along_axis(lambda x: mapping.to_rgba(x, bytes=True), 0, data)
+        data = np.moveaxis(data, 1, -1)[:,:,:,:3]
         img_data.append(data)
         
     data = np.concatenate(img_data, axis=1)
-    print(data.shape)
         
-    #print(data.shape)
-    #mpl.pyplot.imshow(data[0])
-    #mpl.pyplot.show()
+    print(data.shape)
+    mpl.pyplot.imshow(data[1])
+    mpl.pyplot.show()
+    mpl.pyplot.imshow(data[23])
+    mpl.pyplot.show()
+    mpl.pyplot.imshow(data[105])
+    mpl.pyplot.show()
     return data
 
 
@@ -304,38 +304,48 @@ if __name__ == "__main__":
     fetcher = DataFetcher(filepath)
     scaler = GRFScaler(scalertype="MinMax", featureRange=(-1,1))
     train = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
-    
+    scaler = GRFScaler(scalertype="MinMax", featureRange=(0,1))
+    gaf = fetcher.fetch_set(raw=False, onlyInitial=True, dropOrthopedics="All", dropBothSidesAffected=False, dataset="TRAIN_BALANCED", stepsize=1, averageTrials=True, scaler=scaler, concat=False, val_setp=0.2, include_info=False, clip=True)
+
     conv_args = {
         "images": ["gadf"],
         "filter": None,
-        "filter_size": (7,7),
-        "num_bins": 20,
+        "num_bins": 25,
         "range": (-1, 1),
-        "dims": 3,
-        "delay": 4,
+        "dims": 2,
+        "delay": 3,
         "metric": "euclidean"
     }
     converter = GRFImageConverter()
     #if this is used with sweep, tensorflow will use the CPU
     #converter.enableGpu()
-    imgFilter = None
-    if conv_args["filter"] is not None:
-        imgFilter = ImageFilter(conv_args["filter"], conv_args["filter_size"])
-    conv_train = converter.convert(train, conversions=get_conv_images(conv_args["images"]), conv_args=conv_args)
-    conv_train["label"] = train["label"]
+    #resizeFilter = ImageFilter("resize", output_size=(98,98))
+    #avgFilter = ImageFilter("avg", (2,2), output_size=(98,98))
+    gaf = converter.convert(gaf, conversions=["gaf"], conv_args=conv_args, imgFilter=None)
+    #mtf = converter.convert(train, conversions=["mtf"], conv_args=conv_args, imgFilter=avgFilter)
+    #rcp = converter.convert(train, conversions=["rcp"], conv_args=conv_args)
+    #rcp = normalize_images(rcp, images=["rcp"], new_range=(0,1))
+        
+    #gaf["affected"]["mtf"] = mtf["affected"]["mtf"]
+    #gaf["affected"]["rcp"] = rcp["affected"]["rcp"]
+    #gaf["non_affected"]["mtf"] = mtf["non_affected"]["mtf"]
+    #gaf["non_affected"]["rcp"] = rcp["non_affected"]["rcp"]
+
+    gaf["label"] = train["label"]
     if "label_val" in train.keys():
-        conv_train["label_val"] = train["label_val"]
+        gaf["label_val"] = train["label_val"]
 
     norms = {
-        "gadf": (-1, 1),
-        "gasf": (-1, 1),
-        "mtf": (0, 1)
+        "gadf": (0, 1),
+        "gasf": (0, 1),
+        "mtf": (0, 1),
+        "rcp": (0, 1)
     }
     
-    img_train = prepare_images(conv_train, norms=norms, images=conv_args["images"])
+    img_train = prepare_images(gaf, norms=norms, images=conv_args["images"])
     img_val = prepare_images(conv_train, norms=norms, images=conv_args["images"], val_set=True)
-    #img_train = extract_features(img_train, useXception=False)
-    #img_val = extract_features(img_val, useXception=False)
+    img_train = extract_features(img_train, useXception=False)
+    img_val = extract_features(img_val, useXception=False)
 
     data = {
         "affected": img_train,
@@ -344,4 +354,4 @@ if __name__ == "__main__":
         "label_val": train["label_val"]
     }
     
-    validate_Inception(data, class_dict=fetcher.get_class_dict(), sweep=True)
+    validate_Inception(data, class_dict=fetcher.get_class_dict(), sweep=False)
